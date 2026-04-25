@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÉLUME — Style Classifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+<script type="module">
+import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+const { FaceLandmarker, FilesetResolver } = vision;
+window._vision = { FaceLandmarker, FilesetResolver };
+</script>
+
+<style>
+  :root {
+    --ink: #1a1208;
+    --cream: #f5f0e8;
+    --gold: #b8952a;
+    --gold-light: #d4af4a;
+    --muted: #8a7d6b;
+    --border: #d8cfc0;
+    --success: #4a7c59;
+    --error: #8b3a3a;
+    --card: #faf7f2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 3rem;
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+    background: var(--cream);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    color: var(--ink);
+  }
+
+  .logo span {
+    color: var(--gold);
+    font-style: italic;
+  }
+
+  .subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .status-bar {
+    margin-left: auto;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .status-dot.ready { background: var(--success); }
+  .status-dot.loading { background: var(--gold); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+  /* ── Main layout ── */
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem;
+  }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+    padding: 4rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--card);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(184,149,42,0.03) 100%);
+    pointer-events: none;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--gold);
+    background: #fdf9f0;
+  }
+
+  .drop-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+
+  .drop-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .drop-sub {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  #fileInput { display: none; }
+
+  /* ── Queue ── */
+  .queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 2.5rem 0 1rem;
+  }
+
+  .queue-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.4rem;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--cream);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 1px;
+  }
+
+  .btn:hover { background: var(--gold); border-color: var(--gold); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .btn-ghost:hover { background: var(--ink); color: var(--cream); }
+
+  /* ── Image cards ── */
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .image-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+
+  .image-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+  .card-image-wrap {
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+    background: #e8e0d4;
+  }
+
+  .card-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.6rem;
+    border-radius: 1px;
+    font-weight: 400;
+  }
+
+  .badge-pending { background: rgba(26,18,8,0.7); color: var(--cream); }
+  .badge-classifying { background: rgba(184,149,42,0.9); color: white; }
+  .badge-done { background: rgba(74,124,89,0.9); color: white; }
+  .badge-noface { background: rgba(139,58,58,0.9); color: white; }
+  .badge-saved { background: var(--ink); color: var(--cream); }
+
+  .card-shape-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(transparent, rgba(26,18,8,0.8));
+    color: white;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-style: italic;
+    display: none;
+  }
+
+  .card-body { padding: 1.25rem; }
+
+  .card-filename {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input, select, textarea {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--ink);
+    border-radius: 1px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, select:focus, textarea:focus { border-color: var(--gold); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .shape-result {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    margin-bottom: 0.75rem;
+  }
+
+  .shape-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--gold);
+  }
+
+  .shape-conf {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  .shape-ambiguous {
+    font-size: 0.6rem;
+    color: var(--error);
+    letter-spacing: 0.1em;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .card-actions .btn { flex: 1; text-align: center; font-size: 0.6rem; padding: 0.5rem; }
+
+  .progress-bar {
+    height: 2px;
+    background: var(--border);
+    margin-bottom: 2rem;
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--gold);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* ── Log ── */
+  .log-panel {
+    margin-top: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 0.75rem 1rem;
+    background: var(--ink);
+    color: var(--cream);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .log-body {
+    background: #0f0c08;
+    color: #c8b88a;
+    font-size: 0.7rem;
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+
+  .log-entry { opacity: 0.8; }
+  .log-entry.success { color: #7ec89a; opacity: 1; }
+  .log-entry.error { color: #e87878; opacity: 1; }
+  .log-entry.info { color: #b8d4e8; opacity: 1; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 1.5rem; flex-wrap: wrap; }
+    main { padding: 1.5rem; }
+    .image-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">É<span>LUME</span></div>
+    <div class="subtitle">Style Classifier — Admin Tool</div>
+  </div>
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Initialising...</span>
+  </div>
+</header>
+
+<main>
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-icon">◈</div>
+    <div class="drop-title">Drop hairstyle images here</div>
+    <div class="drop-sub">or click to select — JPG, PNG, WEBP</div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <!-- Queue header -->
+  <div class="queue-header" id="queueHeader" style="display:none">
+    <div class="queue-title">Image Queue</div>
+    <div style="display:flex;gap:0.75rem">
+      <button class="btn btn-ghost" onclick="clearDone()">Clear Saved</button>
+      <button class="btn" id="processAllBtn" onclick="processAll()">Process All</button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="image-grid" id="imageGrid"></div>
+  <div class="empty-state" id="emptyState">No images in queue</div>
+
+  <!-- Log -->
+  <div class="log-panel" id="logPanel" style="display:none">
+    <div class="log-header">
+      <span>Activity Log</span>
+      <span id="logCount">0 entries</span>
+    </div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+</main>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────
+const WORKER_URL = "https://elume-classifier.acedynamicstrading.workers.dev";
+
+// ── State ─────────────────────────────────────────────────────────
+let faceLandmarker = null;
+let queue = [];
+let logEntries = [];
+
+// ── MediaPipe init ────────────────────────────────────────────────
+async function initMediaPipe() {
+  setStatus('loading', 'Loading AI model...');
+  try {
+    const { FaceLandmarker, FilesetResolver } = window._vision;
+    const filesetResolver = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+    );
+    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+        delegate: "GPU"
+      },
+      runningMode: "IMAGE",
+      numFaces: 1,
+    });
+    setStatus('ready', 'Ready');
+    addLog('MediaPipe face landmarker ready', 'success');
+  } catch(e) {
+    setStatus('', 'Model failed — check console');
+    addLog('MediaPipe init failed: ' + e.message, 'error');
+  }
+}
+
+// ── Status ────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+// ── Log ───────────────────────────────────────────────────────────
+function addLog(msg, type = '') {
+  logEntries.push({ msg, type });
+  const panel = document.getElementById('logPanel');
+  const body  = document.getElementById('logBody');
+  panel.style.display = 'block';
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+  document.getElementById('logCount').textContent = logEntries.length + ' entries';
+}
+
+// ── Drop zone ─────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFiles([...e.dataTransfer.files]);
+});
+fileInput.addEventListener('change', e => handleFiles([...e.target.files]));
+
+function handleFiles(files) {
+  const images = files.filter(f => f.type.startsWith('image/'));
+  if (!images.length) return;
+  images.forEach(addToQueue);
+  document.getElementById('queueHeader').style.display = 'flex';
+}
+
+// ── Queue ─────────────────────────────────────────────────────────
+function addToQueue(file) {
+  const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  const item = { id, file, status: 'pending', result: null, driveUrl: null };
+  queue.push(item);
+
+  const url = URL.createObjectURL(file);
+  const card = createCard(item, url);
+  document.getElementById('imageGrid').appendChild(card);
+  addLog(`Queued: ${file.name}`, 'info');
+}
+
+function createCard(item, objectUrl) {
+  const card = document.createElement('div');
+  card.className = 'image-card';
+  card.id = item.id;
+
+  card.innerHTML = `
+    <div class="card-image-wrap">
+      <img src="${objectUrl}" alt="">
+      <span class="card-badge badge-pending" id="badge_${item.id}">Pending</span>
+      <div class="card-shape-overlay" id="overlay_${item.id}"></div>
+    </div>
+    <div class="card-body">
+      <div class="card-filename">${item.file.name}</div>
+      <div id="result_${item.id}"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Style Name</label>
+          <input type="text" id="name_${item.id}" placeholder="e.g. Soft Bob" value="${guessName(item.file.name)}">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="cat_${item.id}">
+            <option>Short</option>
+            <option selected>Medium</option>
+            <option>Long</option>
+            <option>Updo</option>
+            <option>Natural</option>
+            <option>Men</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Gender</label>
+          <select id="gender_${item.id}">
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="unisex">Unisex</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tags (comma separated)</label>
+          <input type="text" id="tags_${item.id}" placeholder="e.g. wavy, colour">
+        </div>
+      </div>
+      <div class="form-group full" style="margin-bottom:0.75rem">
+        <label>Description</label>
+        <textarea id="desc_${item.id}" placeholder="Optional style description"></textarea>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-ghost" onclick="processOne('${item.id}')">Classify</button>
+        <button class="btn" id="save_${item.id}" onclick="saveOne('${item.id}')" disabled>Save to Sheet</button>
+      </div>
+    </div>
+  `;
+
+  // Auto-guess category from filename
+  const lower = item.file.name.toLowerCase();
+  const catSel = card.querySelector(`#cat_${item.id}`);
+  if (lower.includes('short')) catSel.value = 'Short';
+  else if (lower.includes('long')) catSel.value = 'Long';
+  else if (lower.includes('updo') || lower.includes('bun')) catSel.value = 'Updo';
+  else if (lower.includes('natural') || lower.includes('curly') || lower.includes('afro')) catSel.value = 'Natural';
+  else if (lower.includes('men') || lower.includes('male') || lower.includes('man')) catSel.value = 'Men';
+
+  return card;
+}
+
+function guessName(filename) {
+  return filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ── Classify one image ────────────────────────────────────────────
+async function processOne(id) {
+  if (!faceLandmarker) { addLog('Model not ready yet', 'error'); return; }
+
+  const item = queue.find(q => q.id === id);
+  if (!item) return;
+
+  setBadge(id, 'classifying', 'Classifying...');
+  addLog(`Classifying: ${item.file.name}`, 'info');
+
+  try {
+    // Load image into HTMLImageElement for MediaPipe
+    const bitmap = await createImageBitmap(item.file);
+    const canvas = document.createElement('canvas');
+    canvas.width  = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    const imgEl = new Image();
+    imgEl.src = canvas.toDataURL();
+    await new Promise(r => imgEl.onload = r);
+
+    const result = faceLandmarker.detect(imgEl);
+
+    if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
+      setBadge(id, 'noface', 'No Face');
+      addLog(`No face detected: ${item.file.name}`, 'error');
+      document.getElementById(`result_${id}`).innerHTML = `
+        <div style="color:var(--error);font-size:0.7rem;padding:0.5rem 0">⚠ No face detected in this image</div>`;
+      item.status = 'noface';
+      return;
+    }
+
+    const landmarks = result.faceLandmarks[0];
+    const classification = classifyFaceShape(landmarks, bitmap.width, bitmap.height);
+    item.result = classification;
+    item.status = 'classified';
+
+    // Show result
+    const ambiguousTag = classification.ambiguous
+      ? `<span class="shape-ambiguous">· ambiguous</span>` : '';
+    document.getElementById(`result_${id}`).innerHTML = `
+      <div class="shape-result">
+        <div>
+          <div class="shape-name">${classification.shape}</div>
+          <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.1em">
+            Secondary: ${classification.secondaryShape} ${ambiguousTag}
+          </div>
+        </div>
+        <div class="shape-conf">Confidence<br>${(classification.confidence * 100).toFixed(0)}%</div>
+      </div>`;
+
+    document.getElementById(`overlay_${id}`).style.display = 'block';
+    document.getElementById(`overlay_${id}`).textContent = classification.shape;
+    setBadge(id, 'done', classification.shape);
+    document.getElementById(`save_${id}`).disabled = false;
+    addLog(`${item.file.name} → ${classification.shape} (conf: ${(classification.confidence*100).toFixed(0)}%)`, 'success');
+
+  } catch(e) {
+    setBadge(id, 'noface', 'Error');
+    addLog(`Error classifying ${item.file.name}: ${e.message}`, 'error');
+  }
+}
+
+// ── Save one to Sheet ─────────────────────────────────────────────
+async function saveOne(id) {
+  const item = queue.find(q => q.id === id);
+  if (!item || !item.result) return;
+
+  const saveBtn = document.getElementById(`save_${id}`);
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Uploading...';
+  setBadge(id, 'classifying', 'Uploading...');
+  addLog(`Uploading ${item.file.name} to Drive...`, 'info');
+
+  try {
+    // Step 1: Upload image to Drive via Worker
+    const formData = new FormData();
+    formData.append('image', item.file);
+
+    const uploadRes = await fetch(`${WORKER_URL}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const uploadData = await uploadRes.json();
+
+    if (!uploadData.success) throw new Error('Drive upload failed: ' + uploadData.error);
+
+    item.driveUrl = uploadData.thumbnailUrl;
+    addLog(`Uploaded to Drive: ${uploadData.fileName}`, 'success');
+
+    // Step 2: Save row to Sheet via Worker → GAS
+    const name   = document.getElementById(`name_${id}`).value.trim();
+    const cat    = document.getElementById(`cat_${id}`).value;
+    const gender = document.getElementById(`gender_${id}`).value;
+    const tags   = document.getElementById(`tags_${id}`).value.split(',').map(t => t.trim()).filter(Boolean);
+    const desc   = document.getElementById(`desc_${id}`).value.trim();
+
+    saveBtn.textContent = 'Saving...';
+
+    const saveRes = await fetch(`${WORKER_URL}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        category:       cat,
+        imageURL:       item.driveUrl,
+        tags,
+        description:    desc,
+        gender,
+        faceShape:      item.result.shape.toLowerCase(),
+        secondaryShape: item.result.secondaryShape.toLowerCase(),
+        confidence:     item.result.confidence,
+        ambiguous:      item.result.ambiguous,
+        scores:         item.result.scores,
+        measurements:   item.result.measurements,
+        ratios:         item.result.ratios,
+        salonProfile:   item.result.salonProfile,
+      }),
+    });
+
+    const saveData = await saveRes.json();
+    if (!saveData.success) throw new Error('Sheet write failed: ' + saveData.error);
+
+    item.status = 'saved';
+    setBadge(id, 'saved', '✓ Saved');
+    saveBtn.textContent = 'Saved ✓';
+    addLog(`Saved to Sheet: ${name}`, 'success');
+
+  } catch(e) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Retry Save';
+    setBadge(id, 'done', 'Save Failed');
+    addLog(`Save failed for ${item.file.name}: ${e.message}`, 'error');
+  }
+}
+
+// ── Process all ───────────────────────────────────────────────────
+async function processAll() {
+  const pending = queue.filter(q => q.status === 'pending');
+  if (!pending.length) { addLog('No pending images to process', 'info'); return; }
+
+  const bar  = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  bar.style.display = 'block';
+
+  document.getElementById('processAllBtn').disabled = true;
+
+  for (let i = 0; i < pending.length; i++) {
+    await processOne(pending[i].id);
+    fill.style.width = ((i + 1) / pending.length * 100) + '%';
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  document.getElementById('processAllBtn').disabled = false;
+  addLog(`Classified ${pending.length} images`, 'success');
+}
+
+// ── Clear saved ───────────────────────────────────────────────────
+function clearDone() {
+  queue = queue.filter(q => {
+    if (q.status === 'saved') {
+      document.getElementById(q.id)?.remove();
+      return false;
+    }
+    return true;
+  });
+  if (queue.length === 0) document.getElementById('queueHeader').style.display = 'none';
+}
+
+// ── Badge helper ──────────────────────────────────────────────────
+function setBadge(id, type, text) {
+  const badge = document.getElementById(`badge_${id}`);
+  badge.className = `card-badge badge-${type}`;
+  badge.textContent = text;
+}
+
+// ── FACE SHAPE CLASSIFIER (mirrors elume_classifier.py exactly) ───
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function angleDeg(p1, vertex, p2) {
+  const v1 = { x: p1.x - vertex.x, y: p1.y - vertex.y };
+  const v2 = { x: p2.x - vertex.x, y: p2.y - vertex.y };
+  const dot = v1.x*v2.x + v1.y*v2.y;
+  const mag = Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y);
+  if (mag === 0) return 0;
+  return Math.degrees ? Math.degrees(Math.acos(Math.max(-1, Math.min(1, dot/mag))))
+    : (Math.acos(Math.max(-1, Math.min(1, dot/mag))) * 180 / Math.PI);
+}
+
+function classifyFaceShape(landmarks, w, h) {
+  // Landmark indices
+  const MP = {
+    FOREHEAD: 10, CHIN: 152,
+    LEFT_EAR: 234, RIGHT_EAR: 454,
+    LEFT_JAW: 172, RIGHT_JAW: 397,
+    LEFT_JAW_MID: 136, RIGHT_JAW_MID: 365,
+    LEFT_BROW_OUTER: 70, RIGHT_BROW_OUTER: 300,
+    LEFT_TEMPLE: 162, RIGHT_TEMPLE: 389,
+  };
+
+  // Normalised landmarks (0–1), convert to pixel
+  const lm = idx => ({ x: landmarks[idx].x * w, y: landmarks[idx].y * h });
+
+  const forehead   = lm(MP.FOREHEAD);
+  const chin       = lm(MP.CHIN);
+  const leftEar    = lm(MP.LEFT_EAR);
+  const rightEar   = lm(MP.RIGHT_EAR);
+  const leftJaw    = lm(MP.LEFT_JAW);
+  const rightJaw   = lm(MP.RIGHT_JAW);
+  const leftJawMid = lm(MP.LEFT_JAW_MID);
+  const rightJawMid= lm(MP.RIGHT_JAW_MID);
+  const leftBrow   = lm(MP.LEFT_BROW_OUTER);
+  const rightBrow  = lm(MP.RIGHT_BROW_OUTER);
+  const leftTemple = lm(MP.LEFT_TEMPLE);
+  const rightTemple= lm(MP.RIGHT_TEMPLE);
+
+  const faceHeight  = dist(forehead, chin);
+  const cheekWidth  = dist(leftEar, rightEar);
+  const jawWidth    = dist(leftJaw, rightJaw);
+  const midJawWidth = dist(leftJawMid, rightJawMid);
+  const browWidth   = dist(leftBrow, rightBrow);
+  const templeWidth = dist(leftTemple, rightTemple);
+
+  if (cheekWidth < 1 || faceHeight < 1) return null;
+
+  const hRatio       = faceHeight / cheekWidth;
+  const jawRatio     = jawWidth / cheekWidth;
+  const browRatio    = browWidth / cheekWidth;
+  const templeRatio  = templeWidth / cheekWidth;
+  const taperRatio   = browWidth > 0 ? jawWidth / browWidth : 1;
+  const chinTaper    = jawWidth > 0 ? midJawWidth / jawWidth : 1;
+  const foreheadRatio= Math.max(browRatio, templeRatio);
+
+  const s = { Oval:5, Round:0, Square:0, Heart:0, Diamond:0, Oblong:0, Pear:0 };
+
+  if (hRatio > 1.55) s.Oblong += 40;
+  if (hRatio > 1.65) s.Oblong += 20;
+  if (hRatio > 1.75) s.Oblong += 15;
+  if (jawRatio < 0.75) s.Oblong += 10;
+
+  if (hRatio < 1.25) s.Round += 30;
+  if (hRatio < 1.15) s.Round += 25;
+  if (jawRatio > 0.80) s.Round += 20;
+  if (foreheadRatio > 0.82 && jawRatio > 0.78) s.Round += 15;
+  if (chinTaper > 0.88) s.Round += 10;
+
+  if (hRatio >= 1.15 && hRatio <= 1.50) s.Square += 10;
+  if (jawRatio > 0.82) s.Square += 25;
+  if (jawRatio > 0.90) s.Square += 20;
+  if (Math.abs(foreheadRatio - jawRatio) < 0.08) s.Square += 20;
+  if (chinTaper > 0.85 && jawRatio > 0.82) s.Square += 10;
+
+  if (foreheadRatio > jawRatio + 0.10) s.Heart += 25;
+  if (foreheadRatio > jawRatio + 0.18) s.Heart += 20;
+  if (taperRatio < 0.85) s.Heart += 20;
+  if (taperRatio < 0.78) s.Heart += 15;
+  if (chinTaper < 0.80) s.Heart += 15;
+  if (hRatio > 1.20) s.Heart += 10;
+
+  if (jawRatio > foreheadRatio + 0.08) s.Pear += 25;
+  if (jawRatio > foreheadRatio + 0.15) s.Pear += 20;
+  if (taperRatio > 1.10) s.Pear += 25;
+  if (taperRatio > 1.18) s.Pear += 15;
+  if (browRatio < 0.80) s.Pear += 10;
+
+  const cheekVsForehead = browWidth > 0 ? cheekWidth / browWidth : 1;
+  const cheekVsJaw      = jawWidth  > 0 ? cheekWidth / jawWidth  : 1;
+  if (cheekVsForehead > 1.08 && cheekVsJaw > 1.08) s.Diamond += 35;
+  if (cheekVsForehead > 1.15) s.Diamond += 15;
+  if (cheekVsJaw > 1.15) s.Diamond += 15;
+  if (Math.abs(browRatio - jawRatio) < 0.06) s.Diamond += 10;
+
+  if (hRatio >= 1.30 && hRatio <= 1.55) s.Oval += 20;
+  if (jawRatio >= 0.68 && jawRatio <= 0.85) s.Oval += 15;
+  if (foreheadRatio >= 0.80 && foreheadRatio <= 0.92) s.Oval += 15;
+  if (taperRatio >= 0.82 && taperRatio <= 0.96) s.Oval += 10;
+
+  const ranked = Object.entries(s).sort((a,b) => b[1] - a[1]);
+  const [winner, topScore] = ranked[0];
+  const [second, secScore] = ranked[1];
+
+  const confidence = parseFloat(((topScore - secScore) / Math.max(topScore, 1)).toFixed(3));
+  const ambiguous  = confidence < 0.25;
+
+  // Jaw/chin angles
+  const leftJawAngle  = angleDeg(chin, leftJaw,  leftEar);
+  const rightJawAngle = angleDeg(chin, rightJaw, rightEar);
+  const avgJawAngle   = (leftJawAngle + rightJawAngle) / 2;
+  const chinAngle     = angleDeg(leftJawMid, chin, rightJawMid);
+
+  const jawDesc = avgJawAngle > 145 ? 'Rounded jaw' : avgJawAngle > 125 ? 'Soft jaw' : 'Defined jaw';
+  const chinDesc = chinAngle < 80 ? 'Sharply pointed chin' : chinAngle < 105 ? 'Softly rounded chin' : 'Wide flat chin';
+  const widthDesc = hRatio > 1.55 ? 'Elongated face' : hRatio > 1.25 ? 'Balanced face' : hRatio > 1.10 ? 'Slightly wide face' : 'Wide face';
+  const shapeLabel = ambiguous ? `${winner}-${second}` : winner;
+  const salonProfile = `${shapeLabel} · ${jawDesc} (${avgJawAngle.toFixed(0)}°) · ${chinDesc} · ${widthDesc} · Narrow forehead`;
+
+  return {
+    shape: winner,
+    secondaryShape: second,
+    confidence,
+    ambiguous,
+    scores: s,
+    ratios: {
+      hRatio: +hRatio.toFixed(3),
+      jawRatio: +jawRatio.toFixed(3),
+      browRatio: +browRatio.toFixed(3),
+      templeRatio: +templeRatio.toFixed(3),
+      foreheadRatio: +foreheadRatio.toFixed(3),
+      taperRatio: +taperRatio.toFixed(3),
+      chinTaper: +chinTaper.toFixed(3),
+    },
+    measurements: {
+      faceAspectRatio:    +hRatio.toFixed(3),
+      foreheadToJawRatio: +(jawRatio > 0 ? foreheadRatio / jawRatio : 0).toFixed(3),
+      cheekToJawRatio:    +(jawWidth > 0 ? cheekWidth / jawWidth : 0).toFixed(3),
+      taperRatio:         +taperRatio.toFixed(3),
+      avgJawAngle:        +avgJawAngle.toFixed(1),
+      chinAngle:          +chinAngle.toFixed(1),
+    },
+    salonProfile,
+  };
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Wait for vision module to load
+  const wait = setInterval(() => {
+    if (window._vision) { clearInterval(wait); initMediaPipe(); }
+  }, 200);
+});
+</script>
+</body>
+</html>
