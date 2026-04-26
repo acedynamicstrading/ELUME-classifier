@@ -2,943 +2,1222 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1410'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='18' fill='%23c9a96e'%3EE%3C/text%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ÉLUME — Style Classifier</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
-
-<script type="module">
-import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
-const { FaceLandmarker, FilesetResolver } = vision;
-window._vision = { FaceLandmarker, FilesetResolver };
-</script>
-
+<title>ÉLUME — AI Salon Style Consultant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #1a1208;
-    --cream: #f5f0e8;
-    --gold: #b8952a;
-    --gold-light: #d4af4a;
-    --muted: #8a7d6b;
-    --border: #d8cfc0;
-    --success: #4a7c59;
-    --error: #8b3a3a;
-    --card: #faf7f2;
+    --gold: #c9a96e;
+    --gold-light: #e8d5a3;
+    --gold-dark: #8a6a3a;
+    --cream: #faf6f0;
+    --cream-dark: #f0e8db;
+    --ink: #1a1410;
+    --ink-mid: #3d2e1e;
+    --ink-light: #7a6555;
+    --surface: #ffffff;
+    --border: rgba(201,169,110,0.25);
+    --shadow: 0 8px 40px rgba(26,20,16,0.12);
+    --shadow-lg: 0 20px 80px rgba(26,20,16,0.18);
+    --transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--cream);
-    color: var(--ink);
-    font-family: 'DM Mono', monospace;
-    min-height: 100vh;
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body { font-family: 'Jost', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.4;
   }
-
-  /* ── Header ── */
-  header {
+  .site-header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    background: rgba(250,246,240,0.85); backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
-    padding: 2rem 3rem;
-    display: flex;
-    align-items: baseline;
-    gap: 2rem;
-    background: var(--cream);
-    position: sticky;
-    top: 0;
-    z-index: 100;
   }
+  .logo { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300; letter-spacing: 0.25em; color: var(--ink); text-decoration: none; }
+  .logo span { color: var(--gold); }
+  .header-tag { font-size: 0.65rem; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-light); }
+  .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 120px 24px 60px; text-align: center; position: relative; }
+  .hero-eyebrow { font-size: 0.65rem; font-weight: 400; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-bottom: 24px; }
+  .hero-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.8rem, 7vw, 6rem); font-weight: 300; line-height: 1.05; color: var(--ink); margin-bottom: 20px; }
+  .hero-title em { font-style: italic; color: var(--gold); }
+  .hero-sub { font-size: 0.9rem; font-weight: 300; letter-spacing: 0.08em; color: var(--ink-light); max-width: 480px; line-height: 1.7; margin-bottom: 48px; }
+  .hero-cta { display: inline-flex; align-items: center; gap: 12px; padding: 14px 36px; background: var(--ink); color: var(--cream); font-family: 'Jost', sans-serif; font-size: 0.75rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; text-decoration: none; border: none; cursor: pointer; transition: var(--transition); }
+  .hero-cta:hover { background: var(--gold); }
+  .hero-cta svg { width: 14px; height: 14px; }
+  .hero-decor { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; animation: float 3s ease-in-out infinite; }
+  .hero-decor span { font-size: 0.6rem; letter-spacing: 0.2em; color: var(--ink-light); text-transform: uppercase; }
+  .hero-decor-line { width: 1px; height: 40px; background: var(--gold); }
+  @keyframes float { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
+  #app-section { padding: 100px 24px 80px; max-width: 1100px; margin: 0 auto; scroll-margin-top: 80px; }
+  .section-header { text-align: center; margin-bottom: 60px; }
+  .section-label { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+  .section-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 300; color: var(--ink); line-height: 1.1; }
+  .steps-nav { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 56px; }
+  .step-item { display: flex; align-items: center; gap: 12px; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.05em; border: 1px solid var(--border); background: var(--cream); color: var(--ink-light); transition: var(--transition); }
+  .step-item.active .step-num { background: var(--gold); color: white; border-color: var(--gold); }
+  .step-item.done .step-num { background: var(--ink); color: white; border-color: var(--ink); }
+  .step-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-light); }
+  .step-item.active .step-label { color: var(--ink); }
+  .step-connector { width: 60px; height: 1px; background: var(--border); margin: 0 8px; }
+  .mode-toggle { display: flex; gap: 0; margin-bottom: 40px; border: 1px solid var(--border); overflow: hidden; align-self: center; width: fit-content; margin-left: auto; margin-right: auto; }
+  .mode-btn { padding: 12px 32px; font-family: 'Jost', sans-serif; font-size: 0.7rem; font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; border: none; cursor: pointer; transition: var(--transition); background: transparent; color: var(--ink-light); display: flex; align-items: center; gap: 8px; }
+  .mode-btn.active { background: var(--ink); color: var(--cream); }
+  .mode-btn svg { width: 14px; height: 14px; }
+  .scanner-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .scanner-stage { position: relative; width: 480px; height: 540px; max-width: 100%; background: var(--ink); overflow: hidden; box-shadow: var(--shadow-lg); }
+  #webcam-video, #preview-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #webcam-video { transform: scaleX(-1); }
+  #face-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .scanner-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: rgba(255,255,255,0.3); }
+  .scanner-placeholder svg { width: 48px; height: 48px; opacity: 0.4; }
+  .scanner-placeholder p { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
+  .face-status-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 20px; background: linear-gradient(transparent, rgba(26,20,16,0.8)); display: flex; align-items: center; justify-content: space-between; }
+  .face-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4444; transition: background 0.3s; }
+  .face-status-dot.detected { background: #44cc88; }
+  .face-status-text { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+  .face-quality-score { font-size: 0.65rem; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); }
+  .upload-zone { width: 480px; max-width: 100%; border: 1px dashed var(--border); padding: 36px; text-align: center; cursor: pointer; transition: var(--transition); background: rgba(255,255,255,0.5); }
+  .upload-zone:hover { border-color: var(--gold); background: rgba(201,169,110,0.05); }
+  .upload-zone p { font-size: 0.75rem; letter-spacing: 0.1em; color: var(--ink-light); margin-top: 10px; }
+  .upload-zone .upload-icon { font-size: 2rem; color: var(--gold); }
+  #file-input { display: none; }
+  .upload-guide { width: 480px; max-width: 100%; background: rgba(201,169,110,0.08); border: 1px solid var(--border); padding: 20px 24px; }
+  .guide-title { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+  .guide-items { display: flex; flex-direction: column; gap: 8px; }
+  .guide-item { display: flex; align-items: flex-start; gap: 10px; font-size: 0.75rem; color: var(--ink-light); line-height: 1.5; }
+  .guide-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); margin-top: 7px; flex-shrink: 0; }
+  .gender-select-wrap { width: 480px; max-width: 100%; display: flex; gap: 0; }
+  .gender-opt { flex: 1; padding: 12px; text-align: center; cursor: pointer; border: 1px solid var(--border); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-light); transition: var(--transition); background: transparent; }
+  .gender-opt:first-child { border-right: none; }
+  .gender-opt.selected { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .analyze-btn { padding: 16px 48px; background: var(--gold); color: var(--ink); font-family: 'Jost', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; border: none; cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 12px; opacity: 0.4; pointer-events: none; }
+  .analyze-btn.ready { opacity: 1; pointer-events: auto; }
+  .analyze-btn:hover { background: var(--ink); color: var(--cream); }
+  .analyze-btn.loading { pointer-events: none; }
+  .spinner { width: 14px; height: 14px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+  .analyze-btn.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  .logo {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 2rem;
-    font-weight: 300;
-    letter-spacing: 0.15em;
-    color: var(--ink);
-  }
+  /* ── RESULTS ── */
+  #results-section { display: none; padding: 0 0 80px; }
+  .results-header { text-align: center; padding: 60px 24px 48px; border-top: 1px solid var(--border); }
+  .results-face-badge { display: inline-flex; align-items: center; gap: 10px; padding: 8px 20px; background: var(--ink); font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cream); margin-bottom: 24px; }
+  .results-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 300; color: var(--ink); }
+  .results-title em { color: var(--gold); font-style: italic; }
 
-  .logo span {
-    color: var(--gold);
-    font-style: italic;
-  }
+  /* ── No results state ── */
+  .no-results-state { text-align: center; padding: 60px 24px; max-width: 480px; margin: 0 auto; }
+  .no-results-icon { font-size: 2.5rem; margin-bottom: 20px; opacity: 0.3; }
+  .no-results-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 300; color: var(--ink); margin-bottom: 12px; }
+  .no-results-sub { font-size: 0.8rem; color: var(--ink-light); line-height: 1.7; letter-spacing: 0.04em; margin-bottom: 28px; }
+  .no-results-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .no-results-btn { padding: 12px 28px; font-family: 'Jost', sans-serif; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; border: 1px solid var(--border); background: transparent; color: var(--ink-light); cursor: pointer; transition: var(--transition); }
+  .no-results-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .no-results-btn.primary { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .no-results-btn.primary:hover { background: var(--gold); border-color: var(--gold); color: var(--ink); }
 
-  .subtitle {
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
+  /* ── TRACK SECTIONS ── */
+  .track-section { max-width: 1100px; margin: 0 auto 48px; padding: 0 24px; }
+  .track-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .track-label { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+  .track-desc { font-size: 0.7rem; color: var(--ink-light); letter-spacing: 0.05em; }
+  .track-line { flex: 1; height: 1px; background: var(--border); }
 
-  .status-bar {
-    margin-left: auto;
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
+  /* ── STYLE CARDS ── */
+  .style-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  @media (max-width: 768px) { .style-cards-grid { grid-template-columns: 1fr; gap: 16px; } }
+  .style-card { position: relative; overflow: hidden; cursor: pointer; transition: var(--transition); background: var(--ink); border: 2px solid transparent; }
+  .style-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .style-card.selected { border-color: var(--gold); }
+  .style-card.rank-1::before { content: 'Best Match'; position: absolute; top: 12px; left: 12px; z-index: 2; padding: 4px 10px; background: var(--gold); color: var(--ink); font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 500; }
+  .style-card.attr-match::before { content: 'Geometric Match'; position: absolute; top: 12px; left: 12px; z-index: 2; padding: 4px 10px; background: var(--ink-mid); color: var(--gold-light); font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 500; }
+  .style-card-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; transition: transform 0.5s ease; background: #2a2015; }
+  .style-card:hover .style-card-img { transform: scale(1.04); }
+  .style-card-info { padding: 20px; position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(26,20,16,0.95)); }
+  .style-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 400; color: var(--cream); margin-bottom: 4px; }
+  .style-card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .style-tag { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-light); padding: 2px 6px; border: 1px solid rgba(201,169,110,0.3); }
+  .style-select-indicator { position: absolute; top: 12px; right: 12px; z-index: 2; width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); background: transparent; transition: var(--transition); display: flex; align-items: center; justify-content: center; }
+  .style-card.selected .style-select-indicator { background: var(--gold); border-color: var(--gold); }
+  .style-select-indicator svg { width: 10px; height: 10px; color: white; opacity: 0; transition: opacity 0.2s; }
+  .style-card.selected .style-select-indicator svg { opacity: 1; }
 
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background 0.3s;
-  }
-
-  .status-dot.ready { background: var(--success); }
-  .status-dot.loading { background: var(--gold); animation: pulse 1s infinite; }
-
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-
-  /* ── Main layout ── */
-  main {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 3rem;
-  }
-
-  /* ── Drop zone ── */
-  .drop-zone {
-    border: 1px dashed var(--border);
-    border-radius: 2px;
-    padding: 4rem 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--card);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .drop-zone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, transparent 40%, rgba(184,149,42,0.03) 100%);
-    pointer-events: none;
-  }
-
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--gold);
-    background: #fdf9f0;
-  }
-
-  .drop-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    opacity: 0.4;
-  }
-
-  .drop-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.4rem;
-    font-weight: 300;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.05em;
-  }
-
-  .drop-sub {
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  #fileInput { display: none; }
-
-  /* ── Queue ── */
-  .queue-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 2.5rem 0 1rem;
-  }
-
-  .queue-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.1rem;
-    font-weight: 400;
-    letter-spacing: 0.08em;
-  }
-
-  .btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 0.6rem 1.4rem;
-    border: 1px solid var(--ink);
-    background: var(--ink);
-    color: var(--cream);
-    cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 1px;
-  }
-
-  .btn:hover { background: var(--gold); border-color: var(--gold); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--ink);
-  }
-
-  .btn-ghost:hover { background: var(--ink); color: var(--cream); }
-
-  /* ── Image cards ── */
-  .image-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .image-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    transition: box-shadow 0.2s;
-  }
-
-  .image-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-
-  .card-image-wrap {
-    position: relative;
-    height: 220px;
-    overflow: hidden;
-    background: #e8e0d4;
-  }
-
-  .card-image-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .card-badge {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    font-size: 0.6rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 0.3rem 0.6rem;
-    border-radius: 1px;
-    font-weight: 400;
-  }
-
-  .badge-pending { background: rgba(26,18,8,0.7); color: var(--cream); }
-  .badge-classifying { background: rgba(184,149,42,0.9); color: white; }
-  .badge-done { background: rgba(74,124,89,0.9); color: white; }
-  .badge-noface { background: rgba(139,58,58,0.9); color: white; }
-  .badge-saved { background: var(--ink); color: var(--cream); }
-
-  .card-shape-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.75rem 1rem;
-    background: linear-gradient(transparent, rgba(26,18,8,0.8));
-    color: white;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1rem;
-    font-style: italic;
-    display: none;
-  }
-
-  .card-body { padding: 1.25rem; }
-
-  .card-filename {
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    margin-bottom: 1rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
-  .form-group.full { grid-column: 1 / -1; }
-
-  label {
-    font-size: 0.6rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  input, select, textarea {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--border);
-    background: white;
-    color: var(--ink);
-    border-radius: 1px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  input:focus, select:focus, textarea:focus { border-color: var(--gold); }
-  textarea { resize: vertical; min-height: 60px; }
-
-  .shape-result {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 1px;
-    margin-bottom: 0.75rem;
-  }
-
-  .shape-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--gold);
-  }
-
-  .shape-conf {
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    margin-left: auto;
-  }
-
-  .shape-ambiguous {
-    font-size: 0.6rem;
-    color: var(--error);
-    letter-spacing: 0.1em;
-  }
-
-  .card-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  .card-actions .btn { flex: 1; text-align: center; font-size: 0.6rem; padding: 0.5rem; }
-
-  .progress-bar {
-    height: 2px;
-    background: var(--border);
-    margin-bottom: 2rem;
-    border-radius: 1px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: var(--gold);
-    transition: width 0.4s ease;
-    width: 0%;
-  }
-
-  /* ── Log ── */
-  .log-panel {
-    margin-top: 2.5rem;
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .log-header {
-    padding: 0.75rem 1rem;
-    background: var(--ink);
-    color: var(--cream);
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .log-body {
-    background: #0f0c08;
-    color: #c8b88a;
-    font-size: 0.7rem;
-    padding: 1rem;
-    max-height: 200px;
-    overflow-y: auto;
-    line-height: 1.8;
-  }
-
-  .log-entry { opacity: 0.8; }
-  .log-entry.success { color: #7ec89a; opacity: 1; }
-  .log-entry.error { color: #e87878; opacity: 1; }
-  .log-entry.info { color: #b8d4e8; opacity: 1; }
-
-  /* ── Empty state ── */
-  .empty-state {
-    text-align: center;
-    padding: 3rem;
-    color: var(--muted);
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    display: none;
-  }
-
-  @media (max-width: 600px) {
-    header { padding: 1.5rem; flex-wrap: wrap; }
-    main { padding: 1.5rem; }
-    .image-grid { grid-template-columns: 1fr; }
-    .form-row { grid-template-columns: 1fr; }
+  /* ── CONSULTATION ── */
+  #consultation-section { display: none; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+  .consult-header { text-align: center; margin-bottom: 48px; }
+  .consult-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 300; margin-bottom: 8px; }
+  .consult-subtitle { font-size: 0.8rem; color: var(--ink-light); letter-spacing: 0.05em; }
+  .consult-card { background: var(--surface); border: 1px solid var(--border); padding: 48px; margin-bottom: 32px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .consult-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--gold); }
+  .consult-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .consult-style-name { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; color: var(--ink); }
+  .consult-style-meta { font-size: 0.7rem; letter-spacing: 0.12em; color: var(--ink-light); margin-top: 4px; }
+  .consult-ai-badge { font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--border); color: var(--ink-light); }
+  .consult-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-bottom: 36px; }
+  @media (max-width: 640px) { .consult-grid { grid-template-columns: 1fr; } .consult-card { padding: 28px; } }
+  .consult-section-label { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .consult-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .consult-body { font-size: 0.85rem; line-height: 1.8; color: var(--ink-mid); font-weight: 300; }
+  .treatment-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .treatment-item { display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; color: var(--ink-mid); line-height: 1.5; }
+  .treatment-dot { color: var(--gold); margin-top: 2px; flex-shrink: 0; font-size: 0.7rem; }
+  .upsell-strip { background: var(--cream-dark); padding: 24px; border: 1px solid var(--border); margin-top: 24px; }
+  .upsell-items { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .upsell-chip { padding: 6px 14px; background: var(--ink); color: var(--cream); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .consult-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px; gap: 20px; }
+  .consult-loading .spinner-lg { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; }
+  .consult-loading p { font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-light); }
+  .restart-bar { text-align: center; padding: 40px 24px; border-top: 1px solid var(--border); }
+  .restart-btn { padding: 12px 32px; border: 1px solid var(--border); background: transparent; font-family: 'Jost', sans-serif; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-light); cursor: pointer; transition: var(--transition); }
+  .restart-btn:hover { border-color: var(--ink); color: var(--ink); }
+  footer { text-align: center; padding: 40px 24px; border-top: 1px solid var(--border); font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-light); }
+  .hidden { display: none !important; }
+  .fade-in { animation: fadeIn 0.6s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .live-tips { width: 480px; max-width: 100%; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .live-tip { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-light); display: flex; align-items: center; gap: 6px; }
+  .live-tip-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+  @media (max-width: 540px) {
+    .site-header { padding: 16px 20px; }
+    .scanner-stage { width: 100%; height: 420px; }
+    .upload-zone, .gender-select-wrap, .live-tips { width: 100%; }
+    .steps-nav { gap: 4px; }
+    .step-connector { width: 20px; }
+    .step-label { display: none; }
   }
 </style>
 </head>
 <body>
-
-<header>
-  <div>
-    <div class="logo">É<span>LUME</span></div>
-    <div class="subtitle">Style Classifier — Admin Tool</div>
-  </div>
-  <div class="status-bar">
-    <div class="status-dot" id="statusDot"></div>
-    <span id="statusText">Initialising...</span>
-  </div>
+<header class="site-header">
+  <a href="#" class="logo">ÉL<span>U</span>ME</a>
+  <span class="header-tag">AI Salon Consultation</span>
 </header>
 
-<main>
-  <!-- Drop zone -->
-  <div class="drop-zone" id="dropZone">
-    <div class="drop-icon">◈</div>
-    <div class="drop-title">Drop hairstyle images here</div>
-    <div class="drop-sub">or click to select — JPG, PNG, WEBP</div>
-    <input type="file" id="fileInput" accept="image/*" multiple>
+<section class="hero">
+  <p class="hero-eyebrow">Personalised to your face shape</p>
+  <h1 class="hero-title">Discover Your<br><em>Perfect</em> Style</h1>
+  <p class="hero-sub">Advanced face analysis technology meets professional salon expertise. Your bespoke hair consultation, instantly.</p>
+  <button class="hero-cta" onclick="document.getElementById('app-section').scrollIntoView({behavior:'smooth'})">
+    Begin Consultation
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8l5 5 5-5"/></svg>
+  </button>
+  <div class="hero-decor">
+    <span>Scroll</span>
+    <div class="hero-decor-line"></div>
+  </div>
+</section>
+
+<section id="app-section">
+  <div class="section-header">
+    <p class="section-label">Step 1 of 3</p>
+    <h2 class="section-title">Face Analysis</h2>
+  </div>
+  <div class="steps-nav">
+    <div class="step-item active" id="step1"><div class="step-num">1</div><span class="step-label">Analyse</span></div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="step2"><div class="step-num">2</div><span class="step-label">Choose Style</span></div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="step3"><div class="step-num">3</div><span class="step-label">Consultation</span></div>
+  </div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btn-webcam" onclick="setMode('webcam')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1"/><circle cx="8" cy="8" r="2.5"/></svg>
+      Live Camera
+    </button>
+    <button class="mode-btn" id="btn-upload" onclick="setMode('upload')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10v3h12v-3M8 2v8M5 5l3-3 3 3"/></svg>
+      Upload Photo
+    </button>
+  </div>
+  <div class="scanner-wrap">
+    <div class="scanner-stage" id="scanner-stage">
+      <div class="scanner-placeholder" id="scanner-placeholder">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1"><circle cx="24" cy="20" r="8"/><path d="M12 40c0-6.627 5.373-12 12-12s12 5.373 12 12"/></svg>
+        <p>Camera not started</p>
+      </div>
+      <video id="webcam-video" autoplay muted playsinline class="hidden"></video>
+      <img id="preview-img" class="hidden" alt="Uploaded face">
+      <canvas id="face-canvas"></canvas>
+      <div class="face-status-bar" id="face-status-bar" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="face-status-dot" id="face-dot"></div>
+          <span class="face-status-text" id="face-status-text">No face detected</span>
+        </div>
+        <span class="face-quality-score" id="face-quality"></span>
+      </div>
+    </div>
+    <div class="live-tips" id="webcam-tips" style="display:none">
+      <span class="live-tip"><span class="live-tip-dot"></span> Face the camera directly</span>
+      <span class="live-tip"><span class="live-tip-dot"></span> Align eyes to the guide</span>
+      <span class="live-tip"><span class="live-tip-dot"></span> Keep chin in the oval</span>
+      <span class="live-tip"><span class="live-tip-dot"></span> Ensure good lighting</span>
+    </div>
+    <div class="upload-zone hidden" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">↑</div>
+      <p>Click to upload or drag &amp; drop your photo</p>
+      <p style="font-size:0.65rem;margin-top:4px">JPG, PNG — face clearly visible</p>
+      <input type="file" id="file-input" accept="image/*">
+    </div>
+    <div class="upload-guide hidden" id="upload-guide">
+      <p class="guide-title">Photo Requirements for Best Results</p>
+      <div class="guide-items">
+        <div class="guide-item"><div class="guide-dot"></div><span>Face the camera directly — no profile or angled shots</span></div>
+        <div class="guide-item"><div class="guide-dot"></div><span>Eyes level and clearly visible</span></div>
+        <div class="guide-item"><div class="guide-dot"></div><span>Full face visible from hairline to chin — no crops</span></div>
+        <div class="guide-item"><div class="guide-dot"></div><span>Even, natural lighting — avoid harsh shadows or backlight</span></div>
+        <div class="guide-item"><div class="guide-dot"></div><span>Hair pulled back if possible to expose face shape</span></div>
+      </div>
+    </div>
+    <div class="gender-select-wrap">
+      <button class="gender-opt selected" id="gender-M" onclick="setGender('M')">Men's Styles</button>
+      <button class="gender-opt" id="gender-F" onclick="setGender('F')">Women's Styles</button>
+    </div>
+    <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">
+      Analyse My Face
+      <div class="spinner"></div>
+    </button>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results-section">
+  <div class="results-header">
+    <div class="results-face-badge" id="face-shape-badge">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="6"/></svg>
+      <span id="face-shape-label">Oval Face</span>
+    </div>
+    <h2 class="results-title" id="results-title">Your Top <em>Styles</em></h2>
   </div>
 
-  <!-- Progress -->
-  <div class="progress-bar" id="progressBar" style="display:none">
-    <div class="progress-fill" id="progressFill"></div>
-  </div>
-
-  <!-- Queue header -->
-  <div class="queue-header" id="queueHeader" style="display:none">
-    <div class="queue-title">Image Queue</div>
-    <div style="display:flex;gap:0.75rem">
-      <button class="btn btn-ghost" onclick="clearDone()">Clear Saved</button>
-      <button class="btn" id="processAllBtn" onclick="processAll()">Process All</button>
+  <!-- No results state (shown when gender filter returns nothing) -->
+  <div class="no-results-state hidden" id="no-results-state">
+    <div class="no-results-icon">✂</div>
+    <div class="no-results-title">No styles found yet</div>
+    <p class="no-results-sub">
+      We don't have enough <span id="no-results-gender-label">men's</span> styles
+      for a <span id="no-results-shape-label">this</span> face shape in our database yet.
+      Try switching to see all available styles, or check back as we add more.
+    </p>
+    <div class="no-results-actions">
+      <button class="no-results-btn" onclick="switchGenderAndRetry()">Show Other Gender</button>
+      <button class="no-results-btn primary" onclick="restartApp()">Start Over</button>
     </div>
   </div>
 
-  <!-- Grid -->
-  <div class="image-grid" id="imageGrid"></div>
-  <div class="empty-state" id="emptyState">No images in queue</div>
-
-  <!-- Log -->
-  <div class="log-panel" id="logPanel" style="display:none">
-    <div class="log-header">
-      <span>Activity Log</span>
-      <span id="logCount">0 entries</span>
+  <!-- Track A Primary -->
+  <div class="track-section" id="track-a-primary-section">
+    <div class="track-header">
+      <span class="track-label" id="track-a-primary-label">Shape Match</span>
+      <span class="track-desc" id="track-a-primary-desc">Top styles for your face shape</span>
+      <div class="track-line"></div>
     </div>
-    <div class="log-body" id="logBody"></div>
+    <div class="style-cards-grid" id="track-a-primary-grid"></div>
   </div>
-</main>
+
+  <!-- Track A Secondary (ambiguous only, hidden when empty) -->
+  <div class="track-section hidden" id="track-a-secondary-section">
+    <div class="track-header">
+      <span class="track-label" id="track-a-secondary-label">Secondary Shape Match</span>
+      <span class="track-desc" id="track-a-secondary-desc"></span>
+      <div class="track-line"></div>
+    </div>
+    <div class="style-cards-grid" id="track-a-secondary-grid"></div>
+  </div>
+
+  <!-- Track B (hidden when no measurement data or empty) -->
+  <div class="track-section hidden" id="track-b-section">
+    <div class="track-header">
+      <span class="track-label">Closest Geometric Match</span>
+      <span class="track-desc">Styles whose models share your exact face proportions</span>
+      <div class="track-line"></div>
+    </div>
+    <div class="style-cards-grid" id="track-b-grid"></div>
+  </div>
+
+  <div style="text-align:center;padding:0 24px 40px" id="consult-btn-wrap">
+    <button class="analyze-btn ready" id="consult-btn" onclick="getConsultation()" style="margin:0 auto">
+      Get My Consultation Cards
+      <div class="spinner"></div>
+    </button>
+  </div>
+</section>
+
+<!-- CONSULTATION -->
+<section id="consultation-section">
+  <div class="consult-header">
+    <h2 class="consult-title">Your Salon Consultation</h2>
+    <p class="consult-subtitle">Professional care plans tailored to your chosen styles</p>
+  </div>
+  <div id="consult-cards-wrap"></div>
+  <div class="restart-bar">
+    <button class="restart-btn" onclick="restartApp()">Start New Consultation</button>
+  </div>
+</section>
+
+<footer>
+  <span>© ÉLUME Salon Technology — Powered by MediaPipe &amp; AI</span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────
-const WORKER_URL = "https://elume-classifier.acedynamicstrading.workers.dev";
+const WORKER_URL = "https://elmo-hairstyler-worker.acedynamicstrading.workers.dev";
 
-// ── State ─────────────────────────────────────────────────────────
-let faceLandmarker = null;
-let queue = [];
-let logEntries = [];
+// ── STATE ──────────────────────────────────────────────────────
+let currentMode        = 'webcam';
+let selectedGender     = 'M';
+let faceMeshInstance   = null;
+let cameraInstance     = null;
+let lastLandmarks      = null;
+let faceDetected       = false;
+let faceQuality        = 0;
+let detectedFaceShape  = null;
+let faceClassification = null;
+let allCards           = [];
+let selectedStyles     = [];
+let analysisRunning    = false;
+let uploadedImageReady = false;
+let cameraFailed       = false;
 
-// ── MediaPipe init ────────────────────────────────────────────────
-async function initMediaPipe() {
-  setStatus('loading', 'Loading AI model...');
+// ── MEDIAPIPE LANDMARK INDICES ─────────────────────────────────
+// These must match elume_classifier.py and gas_elume.js exactly.
+const MP = {
+  LEFT_EYE_OUTER:   33,  RIGHT_EYE_OUTER:  263,
+  LEFT_EYE_INNER:  133,  RIGHT_EYE_INNER:  362,
+  LEFT_EAR:        234,  RIGHT_EAR:        454,
+  FOREHEAD:         10,  CHIN:             152,
+  LEFT_JAW:        172,  RIGHT_JAW:        397,
+  LEFT_JAW_MID:    136,  RIGHT_JAW_MID:    365,
+  LEFT_BROW_OUTER:  70,  RIGHT_BROW_OUTER: 300,
+  LEFT_TEMPLE:     162,  RIGHT_TEMPLE:     389,
+  NOSE_TIP:          1,  MOUTH_LEFT:        61,  MOUTH_RIGHT: 291,
+};
+
+// ── MODE & GENDER ──────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  if (mode === 'webcam') cameraFailed = false;
+  document.getElementById('btn-webcam').classList.toggle('active', mode === 'webcam');
+  document.getElementById('btn-upload').classList.toggle('active', mode === 'upload');
+  document.getElementById('upload-zone').classList.toggle('hidden', mode === 'webcam');
+  document.getElementById('upload-guide').classList.toggle('hidden', mode === 'webcam');
+  document.getElementById('webcam-tips').style.display = mode === 'webcam' ? 'flex' : 'none';
+  if (mode === 'webcam') {
+    startWebcam();
+    document.getElementById('preview-img').classList.add('hidden');
+    uploadedImageReady = false;
+  } else {
+    stopWebcam();
+    document.getElementById('webcam-video').classList.add('hidden');
+    resetFaceStatus();
+  }
+  updateAnalyzeBtn();
+}
+
+function setGender(g) {
+  selectedGender = g;
+  document.getElementById('gender-M').classList.toggle('selected', g === 'M');
+  document.getElementById('gender-F').classList.toggle('selected', g === 'F');
+}
+
+// ── WEBCAM ─────────────────────────────────────────────────────
+async function startWebcam(forceRetry) {
+  if (cameraInstance) return;
+  if (cameraFailed && !forceRetry) return;
+  cameraFailed = false;
+  document.getElementById('scanner-placeholder').style.display = 'none';
+  document.getElementById('face-status-bar').style.display = 'flex';
+  const video = document.getElementById('webcam-video');
+  video.classList.remove('hidden');
+  if (!faceMeshInstance) {
+    faceMeshInstance = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+    faceMeshInstance.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.7, minTrackingConfidence: 0.6 });
+    faceMeshInstance.onResults(onFaceMeshResults);
+  }
   try {
-    const { FaceLandmarker, FilesetResolver } = window._vision;
-    const filesetResolver = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-    );
-    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-      baseOptions: {
-        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-        delegate: "GPU"
-      },
-      runningMode: "IMAGE",
-      numFaces: 1,
+    cameraInstance = new Camera(video, {
+      onFrame: async () => { if (faceMeshInstance) await faceMeshInstance.send({ image: video }); },
+      width: 640, height: 720,
     });
-    setStatus('ready', 'Ready');
-    addLog('MediaPipe face landmarker ready', 'success');
-  } catch(e) {
-    setStatus('', 'Model failed — check console');
-    addLog('MediaPipe init failed: ' + e.message, 'error');
+    await cameraInstance.start();
+  } catch (err) {
+    cameraInstance = null;
+    video.classList.add('hidden');
+    document.getElementById('face-status-bar').style.display = 'none';
+    if (err && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')) cameraFailed = true;
+    showCameraError(err);
   }
 }
 
-// ── Status ────────────────────────────────────────────────────────
-function setStatus(state, text) {
-  document.getElementById('statusDot').className = 'status-dot ' + state;
-  document.getElementById('statusText').textContent = text;
-}
-
-// ── Log ───────────────────────────────────────────────────────────
-function addLog(msg, type = '') {
-  logEntries.push({ msg, type });
-  const panel = document.getElementById('logPanel');
-  const body  = document.getElementById('logBody');
-  panel.style.display = 'block';
-  const entry = document.createElement('div');
-  entry.className = 'log-entry ' + type;
-  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  body.appendChild(entry);
-  body.scrollTop = body.scrollHeight;
-  document.getElementById('logCount').textContent = logEntries.length + ' entries';
-}
-
-// ── Drop zone ─────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  handleFiles([...e.dataTransfer.files]);
-});
-fileInput.addEventListener('change', e => handleFiles([...e.target.files]));
-
-function handleFiles(files) {
-  const images = files.filter(f => f.type.startsWith('image/'));
-  if (!images.length) return;
-  images.forEach(addToQueue);
-  document.getElementById('queueHeader').style.display = 'flex';
-}
-
-// ── Queue ─────────────────────────────────────────────────────────
-function addToQueue(file) {
-  const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-  const item = { id, file, status: 'pending', result: null, driveUrl: null };
-  queue.push(item);
-
-  const url = URL.createObjectURL(file);
-  const card = createCard(item, url);
-  document.getElementById('imageGrid').appendChild(card);
-  addLog(`Queued: ${file.name}`, 'info');
-}
-
-function createCard(item, objectUrl) {
-  const card = document.createElement('div');
-  card.className = 'image-card';
-  card.id = item.id;
-
-  card.innerHTML = `
-    <div class="card-image-wrap">
-      <img src="${objectUrl}" alt="">
-      <span class="card-badge badge-pending" id="badge_${item.id}">Pending</span>
-      <div class="card-shape-overlay" id="overlay_${item.id}"></div>
-    </div>
-    <div class="card-body">
-      <div class="card-filename">${item.file.name}</div>
-      <div id="result_${item.id}"></div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Style Name</label>
-          <input type="text" id="name_${item.id}" placeholder="e.g. Soft Bob" value="${guessName(item.file.name)}">
-        </div>
-        <div class="form-group">
-          <label>Category</label>
-          <select id="cat_${item.id}">
-            <option>Short</option>
-            <option selected>Medium</option>
-            <option>Long</option>
-            <option>Updo</option>
-            <option>Natural</option>
-            <option>Men</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Gender</label>
-          <select id="gender_${item.id}">
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="unisex">Unisex</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Tags (comma separated)</label>
-          <input type="text" id="tags_${item.id}" placeholder="e.g. wavy, colour">
-        </div>
-      </div>
-      <div class="form-group full" style="margin-bottom:0.75rem">
-        <label>Description</label>
-        <textarea id="desc_${item.id}" placeholder="Optional style description"></textarea>
-      </div>
-      <div class="card-actions">
-        <button class="btn btn-ghost" onclick="processOne('${item.id}')">Classify</button>
-        <button class="btn" id="save_${item.id}" onclick="saveOne('${item.id}')" disabled>Save to Sheet</button>
-      </div>
-    </div>
+function showCameraError(err) {
+  const placeholder = document.getElementById('scanner-placeholder');
+  placeholder.style.display = 'flex';
+  const isDenied   = err && (err.name === 'NotAllowedError'  || err.name === 'PermissionDeniedError');
+  const isNotFound = err && (err.name === 'NotFoundError'    || err.name === 'DevicesNotFoundError');
+  let msg = 'Camera unavailable';
+  if (isDenied)   msg = 'Camera permission denied';
+  else if (isNotFound) msg = 'No camera found on this device';
+  placeholder.innerHTML = `
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1"><circle cx="24" cy="20" r="8"/><path d="M12 40c0-6.627 5.373-12 12-12s12 5.373 12 12"/></svg>
+    <p style="color:rgba(255,255,255,0.5);font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;text-align:center;padding:0 16px">${msg}</p>
+    ${isDenied
+      ? `<button onclick="cameraFailed=false;startWebcam(true)" style="margin-top:8px;padding:8px 20px;background:var(--gold);color:var(--ink);border:none;cursor:pointer;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase">Try Again</button>`
+      : `<button onclick="setMode('upload')" style="margin-top:8px;padding:8px 20px;background:var(--gold);color:var(--ink);border:none;cursor:pointer;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase">Use Upload Instead</button>`}
   `;
-
-  // Auto-guess category from filename
-  const lower = item.file.name.toLowerCase();
-  const catSel = card.querySelector(`#cat_${item.id}`);
-  if (lower.includes('short')) catSel.value = 'Short';
-  else if (lower.includes('long')) catSel.value = 'Long';
-  else if (lower.includes('updo') || lower.includes('bun')) catSel.value = 'Updo';
-  else if (lower.includes('natural') || lower.includes('curly') || lower.includes('afro')) catSel.value = 'Natural';
-  else if (lower.includes('men') || lower.includes('male') || lower.includes('man')) catSel.value = 'Men';
-
-  return card;
 }
 
-function guessName(filename) {
-  return filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+function stopWebcam() {
+  if (cameraInstance) { cameraInstance.stop(); cameraInstance = null; }
+  document.getElementById('webcam-video').classList.add('hidden');
+  document.getElementById('face-status-bar').style.display = 'none';
+  resetFaceStatus();
 }
 
-// ── Classify one image ────────────────────────────────────────────
-async function processOne(id) {
-  if (!faceLandmarker) { addLog('Model not ready yet', 'error'); return; }
+function resetFaceStatus() {
+  faceDetected = false;
+  lastLandmarks = null;
+  drawAlignmentGuide._s = null;   // reset smoothing state on mode switch
+  const canvas = document.getElementById('face-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('face-dot').classList.remove('detected');
+  document.getElementById('face-status-text').textContent = 'No face detected';
+  document.getElementById('face-quality').textContent = '';
+  updateAnalyzeBtn();
+}
 
-  const item = queue.find(q => q.id === id);
-  if (!item) return;
+function onFaceMeshResults(results) {
+  const canvas = document.getElementById('face-canvas');
+  const stage  = document.getElementById('scanner-stage');
+  canvas.width  = stage.offsetWidth;
+  canvas.height = stage.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+    lastLandmarks = results.multiFaceLandmarks[0];
+    const quality = evaluateFaceQuality(lastLandmarks, canvas.width, canvas.height);
+    faceQuality   = quality.score;
+    faceDetected  = quality.score > 50;
+    drawAlignmentGuide(ctx, canvas.width, canvas.height, lastLandmarks);
+    drawFaceLandmarkGuide(ctx, lastLandmarks, canvas.width, canvas.height, quality);
+    document.getElementById('face-dot').classList.toggle('detected', faceDetected);
+    document.getElementById('face-status-text').textContent = faceDetected
+      ? (quality.score > 80 ? 'Perfect — ready to analyse' : 'Face detected — align to guide')
+      : 'Align face to guide';
+    document.getElementById('face-quality').textContent = `Quality: ${quality.score}%`;
+  } else {
+    faceDetected = false;
+    lastLandmarks = null;
+    drawAlignmentGuide(ctx, canvas.width, canvas.height, null);
+    document.getElementById('face-dot').classList.remove('detected');
+    document.getElementById('face-status-text').textContent = 'No face detected';
+    document.getElementById('face-quality').textContent = '';
+  }
+  updateAnalyzeBtn();
+}
 
-  setBadge(id, 'classifying', 'Classifying...');
-  addLog(`Classifying: ${item.file.name}`, 'info');
+function evaluateFaceQuality(landmarks, w, h) {
+  const nose    = landmarks[MP.NOSE_TIP];
+  const centerX = Math.abs(nose.x - 0.5);
+  const faceHeight = (landmarks[MP.CHIN].y - landmarks[MP.FOREHEAD].y) * h;
+  let score = 100;
+  score -= centerX * 120;
+  if (faceHeight < h * 0.35) score -= (h * 0.35 - faceHeight) / (h * 0.35) * 40;
+  if (faceHeight > h * 0.85) score -= 20;
+  return { score: Math.max(0, Math.min(100, Math.round(score))) };
+}
 
-  try {
-    // Load image into HTMLImageElement for MediaPipe
-    const bitmap = await createImageBitmap(item.file);
-    const canvas = document.createElement('canvas');
-    canvas.width  = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(bitmap, 0, 0);
-    const imgEl = new Image();
-    imgEl.src = canvas.toDataURL();
-    await new Promise(r => imgEl.onload = r);
-
-    const result = faceLandmarker.detect(imgEl);
-
-    if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
-      setBadge(id, 'noface', 'No Face');
-      addLog(`No face detected: ${item.file.name}`, 'error');
-      document.getElementById(`result_${id}`).innerHTML = `
-        <div style="color:var(--error);font-size:0.7rem;padding:0.5rem 0">⚠ No face detected in this image</div>`;
-      item.status = 'noface';
-      return;
+// ── CANVAS DRAWING ─────────────────────────────────────────────
+function drawAlignmentGuide(ctx, w, h, landmarks) {
+  let cx, cy, ow, oh;
+  if (landmarks) {
+    const lm = (idx) => ({ x: landmarks[idx].x * w, y: landmarks[idx].y * h });
+    const fore = lm(MP.FOREHEAD), chin = lm(MP.CHIN);
+    const le   = lm(MP.LEFT_EAR),  re  = lm(MP.RIGHT_EAR);
+    const lt   = lm(MP.LEFT_TEMPLE),rt = lm(MP.RIGHT_TEMPLE);
+    cx = (fore.x + chin.x) / 2;
+    cy = (fore.y + chin.y) / 2;
+    const faceH     = Math.hypot(chin.x - fore.x, chin.y - fore.y);
+    oh = faceH * 0.58;
+    const earSpan    = Math.hypot(re.x - le.x, re.y - le.y);
+    const templeSpan = Math.hypot(rt.x - lt.x, rt.y - lt.y);
+    ow = Math.max(earSpan, templeSpan) * 0.58;
+    if (!drawAlignmentGuide._s) {
+      drawAlignmentGuide._s = { cx, cy, ow, oh };
+    } else {
+      const e = 0.18;
+      drawAlignmentGuide._s.cx += (cx - drawAlignmentGuide._s.cx) * e;
+      drawAlignmentGuide._s.cy += (cy - drawAlignmentGuide._s.cy) * e;
+      drawAlignmentGuide._s.ow += (ow - drawAlignmentGuide._s.ow) * e;
+      drawAlignmentGuide._s.oh += (oh - drawAlignmentGuide._s.oh) * e;
+      ({ cx, cy, ow, oh } = drawAlignmentGuide._s);
     }
-
-    const landmarks = result.faceLandmarks[0];
-    const classification = classifyFaceShape(landmarks, bitmap.width, bitmap.height);
-    item.result = classification;
-    item.status = 'classified';
-
-    // Show result
-    const ambiguousTag = classification.ambiguous
-      ? `<span class="shape-ambiguous">· ambiguous</span>` : '';
-    document.getElementById(`result_${id}`).innerHTML = `
-      <div class="shape-result">
-        <div>
-          <div class="shape-name">${classification.shape}</div>
-          <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.1em">
-            Secondary: ${classification.secondaryShape} ${ambiguousTag}
-          </div>
-        </div>
-        <div class="shape-conf">Confidence<br>${(classification.confidence * 100).toFixed(0)}%</div>
-      </div>`;
-
-    document.getElementById(`overlay_${id}`).style.display = 'block';
-    document.getElementById(`overlay_${id}`).textContent = classification.shape;
-    setBadge(id, 'done', classification.shape);
-    document.getElementById(`save_${id}`).disabled = false;
-    addLog(`${item.file.name} → ${classification.shape} (conf: ${(classification.confidence*100).toFixed(0)}%)`, 'success');
-
-  } catch(e) {
-    setBadge(id, 'noface', 'Error');
-    addLog(`Error classifying ${item.file.name}: ${e.message}`, 'error');
+  } else {
+    drawAlignmentGuide._s = null;
+    cx = w / 2; cy = h / 2; ow = w * 0.38; oh = h * 0.56;
   }
-}
-
-// ── Save one to Sheet ─────────────────────────────────────────────
-async function saveOne(id) {
-  const item = queue.find(q => q.id === id);
-  if (!item || !item.result) return;
-
-  const saveBtn = document.getElementById(`save_${id}`);
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Uploading...';
-  setBadge(id, 'classifying', 'Uploading...');
-  addLog(`Uploading ${item.file.name} to Drive...`, 'info');
-
-  try {
-    // Step 1: Upload image to Drive via Worker
-    const formData = new FormData();
-    formData.append('image', item.file);
-
-    const uploadRes = await fetch(`${WORKER_URL}/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-    const uploadData = await uploadRes.json();
-
-    if (!uploadData.success) throw new Error('Drive upload failed: ' + uploadData.error);
-
-    item.driveUrl = uploadData.thumbnailUrl;
-    addLog(`Uploaded to Drive: ${uploadData.fileName}`, 'success');
-
-    // Step 2: Save row to Sheet via Worker → GAS
-    const name   = document.getElementById(`name_${id}`).value.trim();
-    const cat    = document.getElementById(`cat_${id}`).value;
-    const gender = document.getElementById(`gender_${id}`).value;
-    const tags   = document.getElementById(`tags_${id}`).value.split(',').map(t => t.trim()).filter(Boolean);
-    const desc   = document.getElementById(`desc_${id}`).value.trim();
-
-    saveBtn.textContent = 'Saving...';
-
-    const saveRes = await fetch(`${WORKER_URL}/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        category:       cat,
-        imageURL:       item.driveUrl,
-        tags,
-        description:    desc,
-        gender,
-        faceShape:      item.result.shape.toLowerCase(),
-        secondaryShape: item.result.secondaryShape.toLowerCase(),
-        confidence:     item.result.confidence,
-        ambiguous:      item.result.ambiguous,
-        scores:         item.result.scores,
-        measurements:   item.result.measurements,
-        ratios:         item.result.ratios,
-        salonProfile:   item.result.salonProfile,
-      }),
-    });
-
-    const saveData = await saveRes.json();
-    if (!saveData.success) throw new Error('Sheet write failed: ' + saveData.error);
-
-    item.status = 'saved';
-    setBadge(id, 'saved', '✓ Saved');
-    saveBtn.textContent = 'Saved ✓';
-    addLog(`Saved to Sheet: ${name}`, 'success');
-
-  } catch(e) {
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Retry Save';
-    setBadge(id, 'done', 'Save Failed');
-    addLog(`Save failed for ${item.file.name}: ${e.message}`, 'error');
-  }
-}
-
-// ── Process all ───────────────────────────────────────────────────
-async function processAll() {
-  const pending = queue.filter(q => q.status === 'pending');
-  if (!pending.length) { addLog('No pending images to process', 'info'); return; }
-
-  const bar  = document.getElementById('progressBar');
-  const fill = document.getElementById('progressFill');
-  bar.style.display = 'block';
-
-  document.getElementById('processAllBtn').disabled = true;
-
-  for (let i = 0; i < pending.length; i++) {
-    await processOne(pending[i].id);
-    fill.style.width = ((i + 1) / pending.length * 100) + '%';
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  document.getElementById('processAllBtn').disabled = false;
-  addLog(`Classified ${pending.length} images`, 'success');
-}
-
-// ── Clear saved ───────────────────────────────────────────────────
-function clearDone() {
-  queue = queue.filter(q => {
-    if (q.status === 'saved') {
-      document.getElementById(q.id)?.remove();
-      return false;
-    }
-    return true;
+  const tracked = !!landmarks;
+  const oa = tracked ? 0.75 : 0.4;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, ow, oh, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(201,169,110,${oa})`;
+  ctx.lineWidth   = tracked ? 1.5 : 1;
+  ctx.setLineDash(tracked ? [8, 3] : [6, 4]);
+  ctx.stroke(); ctx.setLineDash([]);
+  const bSize = 18;
+  [[cx - ow * 0.7, cy - oh * 0.7],[cx + ow * 0.7, cy - oh * 0.7],[cx - ow * 0.7, cy + oh * 0.7],[cx + ow * 0.7, cy + oh * 0.7]].forEach(([x, y], i) => {
+    const sx = i % 2 === 0 ? 1 : -1, sy = i < 2 ? 1 : -1;
+    ctx.strokeStyle = `rgba(201,169,110,${tracked ? 0.9 : 0.6})`; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sx * bSize, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + sy * bSize); ctx.stroke();
   });
-  if (queue.length === 0) document.getElementById('queueHeader').style.display = 'none';
+  ctx.font = '500 9px Jost, sans-serif';
+  ctx.fillStyle = `rgba(201,169,110,${tracked ? 0.65 : 0.55})`;
+  ctx.textAlign = 'center';
+  ctx.fillText('HAIRLINE', cx, cy - oh - 10);
+  ctx.fillText('CHIN', cx, cy + oh + 18);
+  const eyeY = landmarks
+    ? ((landmarks[MP.LEFT_EYE_OUTER].y + landmarks[MP.RIGHT_EYE_OUTER].y) / 2) * h
+    : cy - oh * 0.12;
+  ctx.beginPath();
+  ctx.moveTo(cx - ow * 0.5, eyeY); ctx.lineTo(cx + ow * 0.5, eyeY);
+  ctx.strokeStyle = `rgba(201,169,110,${tracked ? 0.45 : 0.3})`; ctx.lineWidth = 0.8;
+  ctx.setLineDash([4, 6]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = `rgba(201,169,110,${tracked ? 0.6 : 0.45})`;
+  ctx.font = '9px Jost, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('EYE LINE', cx + ow * 0.55, eyeY + 3);
+  [cx - ow - 8, cx + ow + 8].forEach(x => {
+    ctx.beginPath(); ctx.moveTo(x, cy - oh * 0.15); ctx.lineTo(x, cy + oh * 0.15);
+    ctx.strokeStyle = `rgba(201,169,110,${tracked ? 0.5 : 0.35})`; ctx.lineWidth = 1; ctx.stroke();
+  });
+  ctx.fillStyle = `rgba(201,169,110,${tracked ? 0.55 : 0.4})`; ctx.textAlign = 'center';
+  ctx.fillText('EAR', cx - ow - 18, cy);
+  ctx.fillText('EAR', cx + ow + 18, cy);
 }
 
-// ── Badge helper ──────────────────────────────────────────────────
-function setBadge(id, type, text) {
-  const badge = document.getElementById(`badge_${id}`);
-  badge.className = `card-badge badge-${type}`;
-  badge.textContent = text;
+function drawFaceLandmarkGuide(ctx, landmarks, w, h, quality) {
+  const lm    = (idx) => ({ x: landmarks[idx].x * w, y: landmarks[idx].y * h });
+  const alpha = quality.score > 50 ? 0.8 : 0.4;
+  const color = quality.score > 80 ? `rgba(68,204,136,${alpha})` : `rgba(201,169,110,${alpha})`;
+  const leftEye = lm(MP.LEFT_EYE_OUTER), rightEye = lm(MP.RIGHT_EYE_OUTER);
+  ctx.beginPath(); ctx.moveTo(leftEye.x, leftEye.y); ctx.lineTo(rightEye.x, rightEye.y);
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+  [MP.LEFT_EAR, MP.RIGHT_EAR].forEach(idx => {
+    const p = lm(idx);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+  const chin = lm(MP.CHIN), fore = lm(MP.FOREHEAD);
+  ctx.beginPath(); ctx.moveTo(fore.x, fore.y); ctx.lineTo(chin.x, chin.y);
+  ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
+  const lj = lm(MP.LEFT_JAW), rj = lm(MP.RIGHT_JAW);
+  ctx.beginPath(); ctx.moveTo(lj.x, lj.y); ctx.lineTo(rj.x, rj.y);
+  ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([2, 4]); ctx.stroke(); ctx.setLineDash([]);
+  [MP.LEFT_EYE_OUTER, MP.RIGHT_EYE_OUTER, MP.CHIN, MP.FOREHEAD, MP.LEFT_EAR, MP.RIGHT_EAR].forEach(idx => {
+    const p = lm(idx);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  });
+  const now   = Date.now() % 2000 / 2000;
+  const scanY = fore.y + (chin.y - fore.y) * now;
+  const grad  = ctx.createLinearGradient(0, scanY - 20, 0, scanY + 20);
+  grad.addColorStop(0, 'transparent');
+  grad.addColorStop(0.5, quality.score > 80 ? 'rgba(68,204,136,0.15)' : 'rgba(201,169,110,0.1)');
+  grad.addColorStop(1, 'transparent');
+  ctx.fillStyle = grad;
+  ctx.fillRect(leftEye.x - 40, scanY - 20, rightEye.x - leftEye.x + 80, 40);
 }
 
-// ── FACE SHAPE CLASSIFIER (mirrors elume_classifier.py exactly) ───
-function dist(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
+// ── UPLOAD MODE ────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const img = document.getElementById('preview-img');
+  img.src = url;
+  img.classList.remove('hidden');
+  document.getElementById('scanner-placeholder').style.display = 'none';
+  document.getElementById('face-status-bar').style.display = 'flex';
+  document.getElementById('face-status-text').textContent = 'Analysing uploaded photo…';
+  img.onload = async () => { await analyseUploadedImage(img); };
+});
+
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.style.borderColor = 'var(--gold)'; });
+uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault(); uploadZone.style.borderColor = '';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('file-input').files = dt.files;
+    document.getElementById('file-input').dispatchEvent(new Event('change'));
+  }
+});
+
+function onUploadResults(results) {
+  const canvas = document.getElementById('face-canvas');
+  const stage  = document.getElementById('scanner-stage');
+  canvas.width  = stage.offsetWidth;
+  canvas.height = stage.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+    lastLandmarks = results.multiFaceLandmarks[0];
+    const quality = evaluateFaceQuality(lastLandmarks, canvas.width, canvas.height);
+    faceQuality   = quality.score;
+    faceDetected  = true;
+    uploadedImageReady = true;
+    drawAlignmentGuide(ctx, canvas.width, canvas.height, lastLandmarks);
+    drawFaceLandmarkGuide(ctx, lastLandmarks, canvas.width, canvas.height, { score: 85 });
+    document.getElementById('face-dot').classList.add('detected');
+    document.getElementById('face-status-text').textContent = 'Face detected — ready to analyse';
+    document.getElementById('face-quality').textContent = `Quality: ${quality.score}%`;
+  } else {
+    faceDetected = false; uploadedImageReady = false;
+    document.getElementById('face-dot').classList.remove('detected');
+    document.getElementById('face-status-text').textContent = 'No face detected — try a clearer photo';
+    document.getElementById('face-quality').textContent = '';
+  }
+  updateAnalyzeBtn();
 }
 
-function angleDeg(p1, vertex, p2) {
-  const v1 = { x: p1.x - vertex.x, y: p1.y - vertex.y };
-  const v2 = { x: p2.x - vertex.x, y: p2.y - vertex.y };
-  const dot = v1.x*v2.x + v1.y*v2.y;
-  const mag = Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y);
-  if (mag === 0) return 0;
-  return Math.degrees ? Math.degrees(Math.acos(Math.max(-1, Math.min(1, dot/mag))))
-    : (Math.acos(Math.max(-1, Math.min(1, dot/mag))) * 180 / Math.PI);
+async function analyseUploadedImage(imgEl) {
+  if (!faceMeshInstance) {
+    faceMeshInstance = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+    faceMeshInstance.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+  }
+  faceMeshInstance.onResults(onUploadResults);
+  await faceMeshInstance.send({ image: imgEl });
 }
 
+// ═══════════════════════════════════════════════════════════════
+// FACE SHAPE CLASSIFIER
+// Single canonical implementation — must be identical to:
+//   • elume_classifier.py  (batch processor)
+//   • gas_elume.js         (GAS — score column selection only)
+// ═══════════════════════════════════════════════════════════════
 function classifyFaceShape(landmarks, w, h) {
-  // Landmark indices
-  const MP = {
-    FOREHEAD: 10, CHIN: 152,
-    LEFT_EAR: 234, RIGHT_EAR: 454,
-    LEFT_JAW: 172, RIGHT_JAW: 397,
-    LEFT_JAW_MID: 136, RIGHT_JAW_MID: 365,
-    LEFT_BROW_OUTER: 70, RIGHT_BROW_OUTER: 300,
-    LEFT_TEMPLE: 162, RIGHT_TEMPLE: 389,
-  };
+  const lm   = (idx) => ({ x: landmarks[idx].x * w, y: landmarks[idx].y * h });
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-  // Normalised landmarks (0–1), convert to pixel
-  const lm = idx => ({ x: landmarks[idx].x * w, y: landmarks[idx].y * h });
+  const fore      = lm(MP.FOREHEAD);
+  const chin      = lm(MP.CHIN);
+  const leftEar   = lm(MP.LEFT_EAR);
+  const rightEar  = lm(MP.RIGHT_EAR);
+  const leftJaw   = lm(MP.LEFT_JAW);
+  const rightJaw  = lm(MP.RIGHT_JAW);
+  const leftJawM  = lm(MP.LEFT_JAW_MID);
+  const rightJawM = lm(MP.RIGHT_JAW_MID);
+  const leftBrow  = lm(MP.LEFT_BROW_OUTER);
+  const rightBrow = lm(MP.RIGHT_BROW_OUTER);
+  const leftTemp  = lm(MP.LEFT_TEMPLE);
+  const rightTemp = lm(MP.RIGHT_TEMPLE);
 
-  const forehead   = lm(MP.FOREHEAD);
-  const chin       = lm(MP.CHIN);
-  const leftEar    = lm(MP.LEFT_EAR);
-  const rightEar   = lm(MP.RIGHT_EAR);
-  const leftJaw    = lm(MP.LEFT_JAW);
-  const rightJaw   = lm(MP.RIGHT_JAW);
-  const leftJawMid = lm(MP.LEFT_JAW_MID);
-  const rightJawMid= lm(MP.RIGHT_JAW_MID);
-  const leftBrow   = lm(MP.LEFT_BROW_OUTER);
-  const rightBrow  = lm(MP.RIGHT_BROW_OUTER);
-  const leftTemple = lm(MP.LEFT_TEMPLE);
-  const rightTemple= lm(MP.RIGHT_TEMPLE);
-
-  const faceHeight  = dist(forehead, chin);
+  const faceHeight  = dist(fore, chin);
   const cheekWidth  = dist(leftEar, rightEar);
   const jawWidth    = dist(leftJaw, rightJaw);
-  const midJawWidth = dist(leftJawMid, rightJawMid);
+  const midJawWidth = dist(leftJawM, rightJawM);
   const browWidth   = dist(leftBrow, rightBrow);
-  const templeWidth = dist(leftTemple, rightTemple);
+  const templeWidth = dist(leftTemp, rightTemp);
 
-  if (cheekWidth < 1 || faceHeight < 1) return null;
+  if (cheekWidth < 1 || faceHeight < 1) {
+    return { shape: 'Oval', secondShape: null, ambiguous: false, confidence: 1,
+      measurements: { faceAspectRatio: 1.35, foreheadToJawRatio: 1.1, cheekToJawRatio: 1.15, taperRatio: 0.9, avgJawAngle: 138, chinAngle: 120 } };
+  }
 
-  const hRatio       = faceHeight / cheekWidth;
-  const jawRatio     = jawWidth / cheekWidth;
-  const browRatio    = browWidth / cheekWidth;
-  const templeRatio  = templeWidth / cheekWidth;
-  const taperRatio   = browWidth > 0 ? jawWidth / browWidth : 1;
-  const chinTaper    = jawWidth > 0 ? midJawWidth / jawWidth : 1;
-  const foreheadRatio= Math.max(browRatio, templeRatio);
+  const hRatio        = faceHeight  / cheekWidth;
+  const jawRatio      = jawWidth    / cheekWidth;
+  const browRatio     = browWidth   / cheekWidth;
+  const templeRatio   = templeWidth / cheekWidth;
+  const taperRatio    = browWidth > 0 ? jawWidth    / browWidth  : 1;
+  const chinTaper     = jawWidth  > 0 ? midJawWidth / jawWidth   : 1;
+  const foreheadRatio = Math.max(browRatio, templeRatio);
 
   const s = { Oval:5, Round:0, Square:0, Heart:0, Diamond:0, Oblong:0, Pear:0 };
 
-  if (hRatio > 1.55) s.Oblong += 40;
-  if (hRatio > 1.65) s.Oblong += 20;
-  if (hRatio > 1.75) s.Oblong += 15;
+  // OBLONG
+  if (hRatio > 1.55)   s.Oblong += 40;
+  if (hRatio > 1.65)   s.Oblong += 20;
+  if (hRatio > 1.75)   s.Oblong += 15;
   if (jawRatio < 0.75) s.Oblong += 10;
 
-  if (hRatio < 1.25) s.Round += 30;
-  if (hRatio < 1.15) s.Round += 25;
-  if (jawRatio > 0.80) s.Round += 20;
-  if (foreheadRatio > 0.82 && jawRatio > 0.78) s.Round += 15;
-  if (chinTaper > 0.88) s.Round += 10;
+  // ROUND — jaw guard: narrow oval face must not trigger round
+  if (hRatio < 1.25 && jawRatio > 0.82)             s.Round += 30;
+  if (hRatio < 1.15 && jawRatio > 0.85)             s.Round += 25;
+  if (jawRatio > 0.80)                               s.Round += 15;
+  if (foreheadRatio > 0.82 && jawRatio > 0.78)      s.Round += 12;
+  if (chinTaper > 0.92)                              s.Round += 10;
+  if (taperRatio < 0.90)                             s.Round -= 20;
 
-  if (hRatio >= 1.15 && hRatio <= 1.50) s.Square += 10;
-  if (jawRatio > 0.82) s.Square += 25;
-  if (jawRatio > 0.90) s.Square += 20;
-  if (Math.abs(foreheadRatio - jawRatio) < 0.08) s.Square += 20;
-  if (chinTaper > 0.85 && jawRatio > 0.82) s.Square += 10;
+  // SQUARE
+  if (hRatio >= 1.15 && hRatio <= 1.50)             s.Square += 10;
+  if (jawRatio > 0.82)                               s.Square += 25;
+  if (jawRatio > 0.90)                               s.Square += 20;
+  if (Math.abs(foreheadRatio - jawRatio) < 0.08)    s.Square += 20;
+  if (chinTaper > 0.85 && jawRatio > 0.82)          s.Square += 10;
 
-  if (foreheadRatio > jawRatio + 0.10) s.Heart += 25;
-  if (foreheadRatio > jawRatio + 0.18) s.Heart += 20;
-  if (taperRatio < 0.85) s.Heart += 20;
-  if (taperRatio < 0.78) s.Heart += 15;
-  if (chinTaper < 0.80) s.Heart += 15;
-  if (hRatio > 1.20) s.Heart += 10;
+  // HEART
+  if (foreheadRatio > jawRatio + 0.10)              s.Heart += 25;
+  if (foreheadRatio > jawRatio + 0.18)              s.Heart += 20;
+  if (taperRatio < 0.85)                            s.Heart += 20;
+  if (taperRatio < 0.78)                            s.Heart += 15;
+  if (chinTaper < 0.80)                             s.Heart += 15;
+  if (hRatio > 1.20)                                s.Heart += 10;
 
-  if (jawRatio > foreheadRatio + 0.08) s.Pear += 25;
-  if (jawRatio > foreheadRatio + 0.15) s.Pear += 20;
-  if (taperRatio > 1.10) s.Pear += 25;
-  if (taperRatio > 1.18) s.Pear += 15;
-  if (browRatio < 0.80) s.Pear += 10;
+  // PEAR
+  if (jawRatio > foreheadRatio + 0.08)              s.Pear += 25;
+  if (jawRatio > foreheadRatio + 0.15)              s.Pear += 20;
+  if (taperRatio > 1.10)                            s.Pear += 25;
+  if (taperRatio > 1.18)                            s.Pear += 15;
+  if (browRatio < 0.80)                             s.Pear += 10;
 
-  const cheekVsForehead = browWidth > 0 ? cheekWidth / browWidth : 1;
-  const cheekVsJaw      = jawWidth  > 0 ? cheekWidth / jawWidth  : 1;
-  if (cheekVsForehead > 1.08 && cheekVsJaw > 1.08) s.Diamond += 35;
-  if (cheekVsForehead > 1.15) s.Diamond += 15;
-  if (cheekVsJaw > 1.15) s.Diamond += 15;
+  // DIAMOND
+  const cvf = browWidth > 0 ? cheekWidth / browWidth : 1;
+  const cvj = jawWidth  > 0 ? cheekWidth / jawWidth  : 1;
+  if (cvf > 1.08 && cvj > 1.08) s.Diamond += 35;
+  if (cvf > 1.15)                s.Diamond += 15;
+  if (cvj > 1.15)                s.Diamond += 15;
   if (Math.abs(browRatio - jawRatio) < 0.06) s.Diamond += 10;
 
-  if (hRatio >= 1.30 && hRatio <= 1.55) s.Oval += 20;
-  if (jawRatio >= 0.68 && jawRatio <= 0.85) s.Oval += 15;
+  // OVAL
+  if (hRatio >= 1.30 && hRatio <= 1.55)             s.Oval += 20;
+  if (jawRatio >= 0.68 && jawRatio <= 0.85)         s.Oval += 15;
   if (foreheadRatio >= 0.80 && foreheadRatio <= 0.92) s.Oval += 15;
-  if (taperRatio >= 0.82 && taperRatio <= 0.96) s.Oval += 10;
+  if (taperRatio >= 0.82 && taperRatio <= 0.96)     s.Oval += 10;
 
-  const ranked = Object.entries(s).sort((a,b) => b[1] - a[1]);
-  const [winner, topScore] = ranked[0];
-  const [second, secScore] = ranked[1];
+  // Floor at 0
+  for (const k in s) s[k] = Math.max(0, s[k]);
 
-  const confidence = parseFloat(((topScore - secScore) / Math.max(topScore, 1)).toFixed(3));
-  const ambiguous  = confidence < 0.25;
+  const ranked    = Object.entries(s).sort((a, b) => b[1] - a[1]);
+  const winner    = ranked[0][0], top = ranked[0][1];
+  const second    = ranked[1][0], sec = ranked[1][1];
+  const confidence = parseFloat(((top - sec) / Math.max(top, 1)).toFixed(3));
+  const ambiguous  = confidence < 0.22;
 
-  // Jaw/chin angles
-  const leftJawAngle  = angleDeg(chin, leftJaw,  leftEar);
-  const rightJawAngle = angleDeg(chin, rightJaw, rightEar);
+  const angDeg = (p1, v, p2) => {
+    const v1 = { x: p1.x - v.x, y: p1.y - v.y };
+    const v2 = { x: p2.x - v.x, y: p2.y - v.y };
+    const dot = v1.x*v2.x + v1.y*v2.y;
+    const mag = Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y);
+    return mag === 0 ? 0 : Math.acos(Math.max(-1, Math.min(1, dot/mag))) * 180 / Math.PI;
+  };
+  const leftJawAngle  = angDeg(chin, leftJaw, leftEar);
+  const rightJawAngle = angDeg(chin, rightJaw, rightEar);
   const avgJawAngle   = (leftJawAngle + rightJawAngle) / 2;
-  const chinAngle     = angleDeg(leftJawMid, chin, rightJawMid);
+  const chinAngle     = angDeg(leftJawM, chin, rightJawM);
 
-  const jawDesc = avgJawAngle > 145 ? 'Rounded jaw' : avgJawAngle > 125 ? 'Soft jaw' : 'Defined jaw';
+  const jawDesc  = avgJawAngle > 145 ? 'Rounded jaw' : avgJawAngle > 125 ? 'Soft jaw' : 'Defined jaw';
   const chinDesc = chinAngle < 80 ? 'Sharply pointed chin' : chinAngle < 105 ? 'Softly rounded chin' : 'Wide flat chin';
-  const widthDesc = hRatio > 1.55 ? 'Elongated face' : hRatio > 1.25 ? 'Balanced face' : hRatio > 1.10 ? 'Slightly wide face' : 'Wide face';
-  const shapeLabel = ambiguous ? `${winner}-${second}` : winner;
-  const salonProfile = `${shapeLabel} · ${jawDesc} (${avgJawAngle.toFixed(0)}°) · ${chinDesc} · ${widthDesc} · Narrow forehead`;
+  const wDesc    = hRatio > 1.55 ? 'Elongated face' : hRatio > 1.25 ? 'Balanced face' : hRatio > 1.10 ? 'Slightly wide face' : 'Wide face';
+  const lbl      = ambiguous ? `${winner}-${second}` : winner;
+
+  console.log('[ÉLUME] Ratios:', { hRatio: hRatio.toFixed(3), jawRatio: jawRatio.toFixed(3), browRatio: browRatio.toFixed(3), foreheadRatio: foreheadRatio.toFixed(3), taperRatio: taperRatio.toFixed(3), chinTaper: chinTaper.toFixed(3) });
+  console.log('[ÉLUME] Scores:', Object.fromEntries(ranked), '→', winner, ambiguous ? `(ambiguous w/ ${second})` : '');
 
   return {
-    shape: winner,
-    secondaryShape: second,
-    confidence,
-    ambiguous,
-    scores: s,
-    ratios: {
-      hRatio: +hRatio.toFixed(3),
-      jawRatio: +jawRatio.toFixed(3),
-      browRatio: +browRatio.toFixed(3),
-      templeRatio: +templeRatio.toFixed(3),
-      foreheadRatio: +foreheadRatio.toFixed(3),
-      taperRatio: +taperRatio.toFixed(3),
-      chinTaper: +chinTaper.toFixed(3),
-    },
+    shape: winner, secondShape: second, ambiguous, confidence,
+    scores: { ...s },
     measurements: {
-      faceAspectRatio:    +hRatio.toFixed(3),
-      foreheadToJawRatio: +(jawRatio > 0 ? foreheadRatio / jawRatio : 0).toFixed(3),
-      cheekToJawRatio:    +(jawWidth > 0 ? cheekWidth / jawWidth : 0).toFixed(3),
-      taperRatio:         +taperRatio.toFixed(3),
-      avgJawAngle:        +avgJawAngle.toFixed(1),
-      chinAngle:          +chinAngle.toFixed(1),
+      faceAspectRatio:    parseFloat(hRatio.toFixed(3)),
+      foreheadToJawRatio: parseFloat((foreheadRatio / (jawRatio || 1)).toFixed(3)),
+      cheekToJawRatio:    parseFloat((cheekWidth    / (jawWidth  || 1)).toFixed(3)),
+      taperRatio:         parseFloat(taperRatio.toFixed(3)),
+      avgJawAngle:        parseFloat(avgJawAngle.toFixed(1)),
+      chinAngle:          parseFloat(chinAngle.toFixed(1)),
     },
-    salonProfile,
+    salonProfile: `${lbl} · ${jawDesc} (${avgJawAngle.toFixed(0)}°) · ${chinDesc} · ${wDesc}`,
   };
 }
 
-// ── Boot ──────────────────────────────────────────────────────────
-window.addEventListener('load', () => {
-  // Wait for vision module to load
-  const wait = setInterval(() => {
-    if (window._vision) { clearInterval(wait); initMediaPipe(); }
-  }, 200);
-});
+// ── UI HELPERS ─────────────────────────────────────────────────
+function updateAnalyzeBtn() {
+  const btn   = document.getElementById('analyze-btn');
+  const ready = (currentMode === 'webcam' && faceDetected) || (currentMode === 'upload' && uploadedImageReady);
+  btn.classList.toggle('ready', ready);
+}
+
+// ── RUN ANALYSIS ───────────────────────────────────────────────
+async function runAnalysis() {
+  if (analysisRunning || !lastLandmarks) return;
+  analysisRunning = true;
+  const btn = document.getElementById('analyze-btn');
+  btn.classList.add('loading');
+  btn.querySelector('.spinner').style.display = 'block';
+
+  // Use stage dimensions as coordinate space (safe even before canvas is painted)
+  const stage = document.getElementById('scanner-stage');
+  const classW = stage.offsetWidth  || 480;
+  const classH = stage.offsetHeight || 540;
+
+  faceClassification = classifyFaceShape(lastLandmarks, classW, classH);
+  detectedFaceShape  = faceClassification.shape;
+
+  try {
+    // ── Gender param: send 'male' or 'female' — NEVER empty ───────────────
+    // The GAS strict gender filter requires an explicit value.
+    const genderParam = selectedGender === 'M' ? 'male' : 'female';
+    const m = faceClassification.measurements;
+
+    const params = new URLSearchParams({
+      action:             'getRecommendations9',
+      faceShape:          detectedFaceShape.toLowerCase(),
+      secondShape:        (faceClassification.secondShape || '').toLowerCase(),
+      ambiguous:          faceClassification.ambiguous ? 'true' : 'false',
+      gender:             genderParam,   // ← always explicit
+      faceAspectRatio:    m.faceAspectRatio,
+      foreheadToJawRatio: m.foreheadToJawRatio,
+      cheekToJawRatio:    m.cheekToJawRatio,
+      taperRatio:         m.taperRatio,
+      avgJawAngle:        m.avgJawAngle,
+      chinAngle:          m.chinAngle,
+    });
+
+    const resp = await fetch(`${WORKER_URL}?${params.toString()}`);
+    const data = await resp.json();
+
+    if (data.success && data.trackA) {
+      // Build flat allCards array for getConsultation indexing
+      allCards = [
+        ...(data.trackA?.primary   || []).map(s => ({ ...s, _track: 'a-primary' })),
+        ...(data.trackA?.secondary || []).map(s => ({ ...s, _track: 'a-secondary' })),
+        ...(data.trackB?.styles    || []).map(s => ({ ...s, _track: 'b' })),
+      ];
+      showResults(data);
+    } else {
+      // GAS returned success:false or unexpected shape
+      allCards = [];
+      showNoResults();
+    }
+  } catch (err) {
+    console.error('[ÉLUME] Fetch error:', err);
+    allCards = [];
+    showNoResults();
+  }
+
+  btn.classList.remove('loading');
+  btn.querySelector('.spinner').style.display = 'none';
+  analysisRunning = false;
+}
+
+// ── SHOW RESULTS ───────────────────────────────────────────────
+function showResults(data) {
+  if (currentMode === 'webcam') stopWebcam();
+  document.getElementById('step1').classList.remove('active');
+  document.getElementById('step1').classList.add('done');
+  document.getElementById('step2').classList.add('active');
+
+  const cls = faceClassification;
+  const badgeText = cls.ambiguous
+    ? `${cls.shape}-${cls.secondShape} Face`
+    : `${cls.shape} Face Shape`;
+  document.getElementById('face-shape-label').textContent = badgeText;
+
+  const tap = data.trackA?.primary   || [];
+  const tas = data.trackA?.secondary || [];
+  const tb  = data.trackB?.styles    || [];
+
+  // ── If zero results across all tracks — show no-results state ──────────
+  if (tap.length === 0 && tas.length === 0 && tb.length === 0) {
+    showNoResults();
+    return;
+  }
+
+  // Hide no-results, show results content
+  document.getElementById('no-results-state').classList.add('hidden');
+  document.getElementById('track-a-primary-section').style.display = '';
+  document.getElementById('consult-btn-wrap').style.display = '';
+
+  const total = allCards.length;
+  document.getElementById('results-title').innerHTML =
+    `Your Top <em>${total} Style${total !== 1 ? 's' : ''}</em>`;
+
+  // ── Track A Primary ────────────────────────────────────────────────────
+  const tapLabel = cls.ambiguous
+    ? `${cls.shape} Shape Styles`
+    : `${cls.shape} Face Styles`;
+  document.getElementById('track-a-primary-label').textContent = tapLabel;
+  document.getElementById('track-a-primary-desc').textContent  =
+    tap.length ? `Top ${tap.length} match${tap.length > 1 ? 'es' : ''} for your face shape` : '';
+  renderGrid('track-a-primary-grid', tap, 0, false);
+
+  // ── Track A Secondary — only show when ambiguous AND results exist ──────
+  const showSecondary = cls.ambiguous && tas.length > 0;
+  document.getElementById('track-a-secondary-section').classList.toggle('hidden', !showSecondary);
+  if (showSecondary) {
+    document.getElementById('track-a-secondary-label').textContent = `${cls.secondShape} Shape Styles`;
+    document.getElementById('track-a-secondary-desc').textContent  =
+      `${tas.length} match${tas.length > 1 ? 'es' : ''} for your secondary shape`;
+    renderGrid('track-a-secondary-grid', tas, tap.length, false);
+  }
+
+  // ── Track B — only show when hasData AND results exist ─────────────────
+  const showTrackB = data.trackB?.hasData && tb.length > 0;
+  document.getElementById('track-b-section').classList.toggle('hidden', !showTrackB);
+  if (showTrackB) {
+    renderGrid('track-b-grid', tb, tap.length + tas.length, true);
+  }
+
+  // Auto-select first card
+  selectedStyles = [0];
+  const firstCard = document.querySelector('#track-a-primary-grid .style-card');
+  if (firstCard) firstCard.classList.add('selected');
+
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('results-section').classList.add('fade-in');
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── NO RESULTS STATE ───────────────────────────────────────────
+function showNoResults() {
+  if (currentMode === 'webcam') stopWebcam();
+  document.getElementById('step1').classList.remove('active');
+  document.getElementById('step1').classList.add('done');
+  document.getElementById('step2').classList.add('active');
+
+  const genderLabel = selectedGender === 'M' ? "men's" : "women's";
+  const shapeLabel  = detectedFaceShape ? detectedFaceShape.toLowerCase() : 'this';
+  document.getElementById('face-shape-label').textContent =
+    detectedFaceShape ? `${detectedFaceShape} Face Shape` : 'Face Detected';
+  document.getElementById('results-title').innerHTML = `No <em>Styles Found</em>`;
+  document.getElementById('no-results-gender-label').textContent = genderLabel;
+  document.getElementById('no-results-shape-label').textContent  = shapeLabel;
+
+  // Hide all tracks and consult button
+  document.getElementById('track-a-primary-section').style.display  = 'none';
+  document.getElementById('track-a-secondary-section').classList.add('hidden');
+  document.getElementById('track-b-section').classList.add('hidden');
+  document.getElementById('consult-btn-wrap').style.display = 'none';
+  document.getElementById('no-results-state').classList.remove('hidden');
+
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('results-section').classList.add('fade-in');
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Offer to switch gender and re-run — called from no-results buttons
+function switchGenderAndRetry() {
+  const newGender = selectedGender === 'M' ? 'F' : 'M';
+  setGender(newGender);
+  // Reset results state
+  allCards = []; selectedStyles = [];
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('no-results-state').classList.add('hidden');
+  // Re-run immediately with same landmarks
+  runAnalysis();
+}
+
+// ── RENDER GRID ────────────────────────────────────────────────
+function makePlaceholder(label) {
+  const lines    = label.length > 18 ? [label.slice(0, 18), label.slice(18)] : [label];
+  const textRows = lines.map((t, i) =>
+    `<text x="200" y="${250 + i * 28}" font-family="Georgia,serif" font-size="18" fill="#c9a96e" text-anchor="middle" letter-spacing="1">${t}</text>`
+  ).join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" viewBox="0 0 400 533"><rect width="400" height="533" fill="#1a1410"/><rect x="60" y="60" width="280" height="413" fill="none" stroke="rgba(201,169,110,0.2)" stroke-width="1"/>${textRows}</svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function renderGrid(gridId, styles, offset, isAttrTrack) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+
+  // Never render an empty-styles message — caller hides the section instead
+  if (!styles || styles.length === 0) return;
+
+  styles.forEach((style, i) => {
+    const globalIdx = offset + i;
+    const card      = document.createElement('div');
+    const isFirst   = i === 0 && !isAttrTrack;
+    card.className  = `style-card${isFirst ? ' rank-1' : ''}${isAttrTrack ? ' attr-match' : ''}`;
+    card.dataset.idx = globalIdx;
+    const imgSrc    = (style.imageUrl || style.imageURL) || makePlaceholder(style.styleName || 'Style');
+    const fallback  = makePlaceholder(style.styleName || 'Style');
+    const tags      = (style.tags || []).slice(0, 3).map(t => `<span class="style-tag">${t}</span>`).join('');
+    card.innerHTML = `
+      <img class="style-card-img" src="${imgSrc}" alt="${style.styleName || 'Style'}" loading="lazy"
+           onerror="this.onerror=null;this.src='${fallback}'">
+      <div class="style-card-info">
+        <div class="style-card-name">${style.styleName || 'Style ' + (globalIdx + 1)}</div>
+        <div class="style-card-tags">${tags}</div>
+      </div>
+      <div class="style-select-indicator">
+        <svg viewBox="0 0 10 8" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 3.5,7 9,1"/></svg>
+      </div>
+    `;
+    card.addEventListener('click', () => toggleStyleSelect(globalIdx, card));
+    grid.appendChild(card);
+  });
+}
+
+function toggleStyleSelect(idx, card) {
+  if (selectedStyles.includes(idx)) {
+    if (selectedStyles.length === 1) return;
+    selectedStyles = selectedStyles.filter(i => i !== idx);
+    card.classList.remove('selected');
+  } else {
+    selectedStyles.push(idx);
+    card.classList.add('selected');
+  }
+}
+
+// ── CONSULTATION ───────────────────────────────────────────────
+async function getConsultation() {
+  const selectedRecs = selectedStyles.map(i => allCards[i]).filter(Boolean);
+  if (!selectedRecs.length) return;
+
+  const btn = document.getElementById('consult-btn');
+  btn.classList.add('loading');
+  btn.querySelector('.spinner').style.display = 'block';
+
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step2').classList.add('done');
+  document.getElementById('step3').classList.add('active');
+
+  const wrap = document.getElementById('consult-cards-wrap');
+  wrap.innerHTML = `<div class="consult-loading"><div class="spinner-lg"></div><p>Preparing your consultation…</p></div>`;
+  document.getElementById('consultation-section').style.display = 'block';
+  document.getElementById('consultation-section').scrollIntoView({ behavior: 'smooth' });
+
+  btn.classList.remove('loading');
+  btn.querySelector('.spinner').style.display = 'none';
+
+  let cards = [];
+  try {
+    const resp = await fetch(`${WORKER_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action:    'getConsultation',
+        faceShape: detectedFaceShape,
+        gender:    selectedGender,
+        styles:    selectedRecs,
+      }),
+    });
+    const data = await resp.json();
+    if (data.success && data.cards) {
+      cards = data.cards;
+    } else {
+      cards = selectedRecs.map(s => generateFallbackCard(s));
+    }
+  } catch {
+    cards = selectedRecs.map(s => generateFallbackCard(s));
+  }
+
+  renderConsultCards(cards, selectedRecs);
+}
+
+function generateFallbackCard(style) {
+  const name = style.styleName || 'Your Style';
+  return {
+    styleName: name, aiGenerated: false,
+    overview: `This ${name.toLowerCase()} has been selected specifically for your ${(detectedFaceShape || '').toLowerCase()} face shape. The proportions and framing have been chosen to balance and enhance your natural features.`,
+    homecare: [
+      'Wash with a sulphate-free shampoo 2–3 times per week',
+      'Apply a lightweight leave-in conditioner while hair is damp, focusing on mid-lengths and ends',
+      'Use a medium-hold styling product suited to your hair texture — cream for fine, wax for thick',
+      'Protect with heat spray before blow-drying; always finish with a cool shot to seal the cuticle',
+    ],
+    treatments: [
+      'Scalp treatment — deep cleansing scalp therapy to promote healthy hair growth',
+      'Bond repair treatment — Olaplex or similar to strengthen hair structure',
+      'Hydration mask — once monthly to maintain elasticity and shine',
+    ],
+    chemicals: [
+      'Keratin smoothing treatment — optional for frizz control',
+      'Scalp treatment — targeted growth serum application during salon visits',
+    ],
+    maintenance: `Every 6–8 weeks for a trim to maintain shape and remove split ends. A style refresh can be done at week 4 for precision cuts.`,
+    upsells: ['Scalp Analysis', 'Glossing Treatment', 'Blowout Styling', 'Hair Spa', 'Eyebrow Shaping'],
+  };
+}
+
+function renderConsultCards(cards, styles) {
+  const wrap = document.getElementById('consult-cards-wrap');
+  wrap.innerHTML = '';
+  const genderLabel = selectedGender === 'M' ? 'Men' : 'Women';
+  cards.forEach((card, i) => {
+    const style = styles[i] || {};
+    const el    = document.createElement('div');
+    el.className = 'consult-card fade-in';
+    el.style.animationDelay = `${i * 0.15}s`;
+    el.innerHTML = `
+      <div class="consult-card-header">
+        <div>
+          <div class="consult-style-name">${card.styleName || style.styleName || 'Style Consultation'}</div>
+          <div class="consult-style-meta">${detectedFaceShape} Face · ${genderLabel}</div>
+        </div>
+        <div class="consult-ai-badge">${card.aiGenerated ? 'AI Consultation' : 'Expert Template'}</div>
+      </div>
+      <div style="margin-bottom:28px">
+        <p class="consult-section-label">Overview</p>
+        <p class="consult-body">${card.overview || ''}</p>
+      </div>
+      <div class="consult-grid">
+        <div>
+          <p class="consult-section-label">Home Care Routine</p>
+          <ul class="treatment-list">${(card.homecare||[]).map(item=>`<li class="treatment-item"><span class="treatment-dot">◆</span><span>${item}</span></li>`).join('')}</ul>
+        </div>
+        <div>
+          <p class="consult-section-label">In-Salon Treatments</p>
+          <ul class="treatment-list">${(card.treatments||[]).map(item=>`<li class="treatment-item"><span class="treatment-dot">◆</span><span>${item}</span></li>`).join('')}</ul>
+          <p class="consult-section-label" style="margin-top:24px">Chemical Services</p>
+          <ul class="treatment-list">${(card.chemicals||[]).map(item=>`<li class="treatment-item"><span class="treatment-dot">◆</span><span>${item}</span></li>`).join('')}</ul>
+        </div>
+      </div>
+      <div style="margin-bottom:24px">
+        <p class="consult-section-label">Maintenance Schedule</p>
+        <p class="consult-body">${card.maintenance || ''}</p>
+      </div>
+      <div class="upsell-strip">
+        <p class="consult-section-label" style="margin-bottom:0">Recommended Add-On Services</p>
+        <div class="upsell-items">${(card.upsells||[]).map(u=>`<span class="upsell-chip">${u}</span>`).join('')}</div>
+      </div>
+    `;
+    wrap.appendChild(el);
+  });
+}
+
+// ── RESTART ────────────────────────────────────────────────────
+function restartApp() {
+  stopWebcam();
+  faceDetected = false; uploadedImageReady = false; lastLandmarks = null;
+  allCards = []; selectedStyles = []; detectedFaceShape = null; faceClassification = null;
+  drawAlignmentGuide._s = null;
+  document.getElementById('preview-img').classList.add('hidden');
+  document.getElementById('preview-img').src = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('scanner-placeholder').style.display = '';
+  document.getElementById('face-status-bar').style.display = 'none';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('consultation-section').style.display = 'none';
+  document.getElementById('no-results-state').classList.add('hidden');
+  document.getElementById('track-a-primary-section').style.display = '';
+  document.getElementById('consult-btn-wrap').style.display = '';
+  ['step1','step2','step3'].forEach(s =>
+    document.getElementById(s).classList.remove('active','done'));
+  document.getElementById('step1').classList.add('active');
+  updateAnalyzeBtn();
+  setMode('webcam');
+  document.getElementById('app-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+window.addEventListener('load', () => { updateAnalyzeBtn(); });
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting && currentMode === 'webcam' && !cameraInstance && !cameraFailed) {
+      startWebcam();
+      document.getElementById('webcam-tips').style.display = 'flex';
+    }
+  });
+}, { threshold: 0.3 });
+observer.observe(document.getElementById('app-section'));
 </script>
 </body>
 </html>
